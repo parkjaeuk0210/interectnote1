@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useSharedCanvasStore } from '../../store/sharedCanvasStore';
 import { useAppStore } from '../../contexts/StoreProvider';
 import { useAuth } from '../../contexts/AuthContext';
@@ -84,7 +85,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div 
       className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-[100] p-4 sm:p-6 pt-10 sm:pt-20 overflow-y-auto"
       onClick={(e) => {
@@ -235,4 +236,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') {
+    return modalContent;
+  }
+
+  return createPortal(modalContent, document.body);
 };
