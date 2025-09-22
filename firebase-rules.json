@@ -3,13 +3,18 @@
     "users": {
       "$uid": {
         ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
+        ".write": "$uid === auth.uid",
+        "shared_canvases": {
+          "$canvasId": {
+            ".write": "$uid === auth.uid"
+          }
+        }
       }
     },
     "shared_canvases": {
       "$canvasId": {
         ".read": "data.child('isPublic').val() === true || (auth != null && (data.child('owner').val() === auth.uid || data.child('participants').child(auth.uid).exists()))",
-        ".write": "data.child('isPublic').val() === true || (auth != null && (data.child('owner').val() === auth.uid || (data.child('participants').child(auth.uid).child('role').val() === 'editor')))",
+        ".write": "!data.exists() && auth != null || data.child('isPublic').val() === true || (auth != null && (data.child('owner').val() === auth.uid || (data.child('participants').child(auth.uid).child('role').val() === 'editor')))",
         "participants": {
           "$participantId": {
             ".write": "auth != null && (root.child('shared_canvases').child($canvasId).child('owner').val() === auth.uid || $participantId === auth.uid)"

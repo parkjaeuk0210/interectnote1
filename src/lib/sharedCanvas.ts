@@ -57,6 +57,11 @@ export const createSharedCanvas = async (
   currentImages?: FirebaseImage[],
   currentFiles?: FirebaseFile[]
 ) => {
+  // Check if Firebase database is initialized
+  if (!database) {
+    throw new Error('Firebase database is not initialized. Please check your Firebase configuration.');
+  }
+  
   const canvasRef = ref(database, 'shared_canvases');
   const newCanvasRef = push(canvasRef);
   const canvasId = newCanvasRef.key!;
@@ -70,7 +75,7 @@ export const createSharedCanvas = async (
       [userId]: {
         userId,
         email: userEmail,
-        role: 'editor' as ParticipantRole,
+        role: 'owner' as ParticipantRole, // Changed from 'editor' to 'owner'
         joinedAt: Date.now(),
         lastActiveAt: Date.now(),
         isOnline: true,

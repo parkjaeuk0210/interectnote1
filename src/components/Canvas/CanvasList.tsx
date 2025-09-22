@@ -4,6 +4,7 @@ import { useStoreMode } from '../../contexts/StoreProvider';
 import { useSharedCanvasStore } from '../../store/sharedCanvasStore';
 import { getUserSharedCanvases, leaveSharedCanvas, createSharedCanvas } from '../../lib/sharedCanvas';
 import { useAppStore } from '../../contexts/StoreProvider';
+import { database } from '../../lib/firebase';
 
 interface CanvasListProps {
   isOpen: boolean;
@@ -82,7 +83,16 @@ export const CanvasList: React.FC<CanvasListProps> = ({ isOpen, onClose }) => {
   };
 
   const handleCreateCanvas = async () => {
-    if (!user || !newCanvasName.trim()) return;
+    if (!user || !newCanvasName.trim()) {
+      alert('캔버스 이름을 입력해주세요');
+      return;
+    }
+    
+    // Check if Firebase is available
+    if (!database) {
+      alert('Firebase가 초기화되지 않았습니다. 로그인이 필요합니다.');
+      return;
+    }
 
     setIsCreating(true);
     try {
@@ -131,7 +141,12 @@ export const CanvasList: React.FC<CanvasListProps> = ({ isOpen, onClose }) => {
       window.location.href = '/';
     } catch (error) {
       console.error('Failed to create canvas:', error);
-      alert('캔버스 생성에 실패했습니다');
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
+        alert(`캔버스 생성 실패: ${error.message}`);
+      } else {
+        alert('캔버스 생성에 실패했습니다');
+      }
     } finally {
       setIsCreating(false);
       setNewCanvasName('');
