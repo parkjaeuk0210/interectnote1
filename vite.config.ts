@@ -12,7 +12,23 @@ export default defineConfig({
       includeAssets: ['icon-192.png', 'icon-512.png', 'icon-512.svg'],
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png}'],
-        navigateFallback: '/index.html'
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/(api|__)/],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.firebaseio\.com\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'firebase-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 7
+              }
+            }
+          }
+        ],
+        skipWaiting: true,
+        clientsClaim: true
       }
     })
   ],
