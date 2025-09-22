@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStoreMode } from '../../contexts/StoreProvider';
 import { useSharedCanvasStore } from '../../store/sharedCanvasStore';
-import { getUserSharedCanvases, leaveSharedCanvas } from '../../lib/sharedCanvas';
+import { getUserSharedCanvases, leaveSharedCanvas, createSharedCanvas } from '../../lib/sharedCanvas';
+import { useAppStore } from '../../contexts/StoreProvider';
 
 interface CanvasListProps {
   isOpen: boolean;
@@ -24,6 +25,12 @@ export const CanvasList: React.FC<CanvasListProps> = ({ isOpen, onClose }) => {
   const [sharedCanvases, setSharedCanvases] = useState<CanvasItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isCreating, setIsCreating] = useState(false);
+  const [showNewCanvas, setShowNewCanvas] = useState(false);
+  const [newCanvasName, setNewCanvasName] = useState('');
+  const notes = useAppStore((state) => state.notes);
+  const images = useAppStore((state) => state.images);
+  const files = useAppStore((state) => state.files);
 
   useEffect(() => {
     if (user && isOpen) {
@@ -71,6 +78,64 @@ export const CanvasList: React.FC<CanvasListProps> = ({ isOpen, onClose }) => {
       }
     } catch (error) {
       alert(error instanceof Error ? error.message : '캔버스 나가기 실패');
+    }
+  };
+
+  const handleCreateCanvas = async () => {
+    if (!user || !newCanvasName.trim()) return;
+
+    setIsCreating(true);
+    try {
+      // Convert notes to FirebaseNote format
+      const firebaseNotes = notes.map(note => ({
+        ...note,
+        userId: user.uid,
+        deviceId: 'web',
+        createdAt: note.createdAt.getTime(),
+        updatedAt: note.updatedAt.getTime()
+      }));
+      
+      // Convert images to FirebaseImage format
+      const firebaseImages = images.map(image => ({
+        ...image,
+        userId: user.uid,
+        deviceId: 'web',
+        createdAt: image.createdAt.getTime(),
+        updatedAt: image.createdAt.getTime(), // Use createdAt since updatedAt doesn't exist
+        storagePath: `images/${user.uid}/${image.id}` // Add required storagePath
+      }));
+      
+      // Convert files to FirebaseFile format
+      const firebaseFiles = files.map(file => ({
+        ...file,
+        userId: user.uid,
+        deviceId: 'web',
+        createdAt: file.createdAt.getTime(),
+        updatedAt: file.createdAt.getTime(), // Use createdAt since updatedAt doesn't exist
+        storagePath: `files/${user.uid}/${file.id}`, // Add required storagePath
+        mimeType: file.fileType === 'document' ? 'application/pdf' : 
+                 file.fileType === 'image' ? 'image/png' : 'application/octet-stream'
+      }));
+
+      const canvasId = await createSharedCanvas(
+        user.uid,
+        user.email || '',
+        newCanvasName,
+        firebaseNotes,
+        firebaseImages,
+        firebaseFiles
+      );
+      
+      // Navigate to the new canvas
+      sessionStorage.setItem('loadSharedCanvas', canvasId);
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Failed to create canvas:', error);
+      alert('캔버스 생성에 실패했습니다');
+    } finally {
+      setIsCreating(false);
+      setNewCanvasName('');
+      setShowNewCanvas(false);
     }
   };
 
@@ -123,7 +188,60 @@ export const CanvasList: React.FC<CanvasListProps> = ({ isOpen, onClose }) => {
 
           {/* Shared Canvases */}
           <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">공유 캔버스</h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">공유 캔버스</h3>
+              <button
+                onClick={() => {
+                  setShowNewCanvas(true);
+                  setNewCanvasName('');
+                }}
+                className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+                title="새 캔버스 만들기"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* New Canvas Input */}
+            {showNewCanvas && (
+              <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <input
+                  type="text"
+                  value={newCanvasName}
+                  onChange={(e) => setNewCanvasName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateCanvas();
+                    if (e.key === 'Escape') {
+                      setNewCanvasName('');
+                      setShowNewCanvas(false);
+                    }
+                  }}
+                  placeholder="캔버스 이름 입력..."
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={handleCreateCanvas}
+                    disabled={!newCanvasName.trim() || isCreating}
+                    className="flex-1 px-3 py-1.5 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isCreating ? '생성 중...' : '생성'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNewCanvasName('');
+                      setShowNewCanvas(false);
+                    }}
+                    className="px-3 py-1.5 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-md hover:bg-gray-300 dark:hover:bg-gray-500"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            )}
             
             {loading ? (
               <div className="text-center py-4">
