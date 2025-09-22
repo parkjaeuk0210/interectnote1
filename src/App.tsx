@@ -108,9 +108,22 @@ function App() {
   // Removed automatic login modal - users can now use the app freely
   // and sign in when they want using the Sign In button
 
+  // Add timeout to prevent infinite loading
+  const [authTimedOut, setAuthTimedOut] = useState(false);
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        console.warn('⚠️ Auth loading timed out - proceeding without Firebase');
+        setAuthTimedOut(true);
+      }, 3000); // 3 second timeout
+      return () => clearTimeout(timeout);
+    }
+  }, [loading]);
+  
   // Gate rendering only while auth is loading (not for Firebase data)
   // Only show loading screen while authentication is being determined
-  if (loading) {
+  // But don't block if Firebase is not configured or if timeout occurred
+  if (loading && !authTimedOut) {
     return (
       <ErrorBoundary>
         <div className="w-screen h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">

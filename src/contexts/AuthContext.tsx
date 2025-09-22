@@ -14,14 +14,20 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // If Firebase is not configured, provide default values
-  const [user, loading, error] = auth 
-    ? useAuthState(auth)
-    : [null, false, undefined];
+  // Check if Firebase is configured
+  const hasAuth = !!auth;
+  
+  // Use auth state only if auth is available, otherwise provide default values immediately
+  const authStateResult = hasAuth ? useAuthState(auth) : null;
+  
+  // Provide default values if auth is not configured
+  const user = authStateResult ? authStateResult[0] : null;
+  const loading = authStateResult ? authStateResult[1] : false;
+  const error = authStateResult ? authStateResult[2] : undefined;
 
   const signInAnonymously = async (): Promise<User | null> => {
     if (!auth) {
-      console.warn('Firebase auth not configured');
+      console.warn('Firebase auth not configured - running in offline mode');
       return null;
     }
     

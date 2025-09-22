@@ -4,9 +4,17 @@ import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
 
 // Check if Firebase config is available
-const hasFirebaseConfig = import.meta.env.VITE_FIREBASE_API_KEY && 
-                         import.meta.env.VITE_FIREBASE_AUTH_DOMAIN && 
-                         import.meta.env.VITE_FIREBASE_PROJECT_ID;
+const hasFirebaseConfig = !!(import.meta.env.VITE_FIREBASE_API_KEY && 
+                           import.meta.env.VITE_FIREBASE_AUTH_DOMAIN && 
+                           import.meta.env.VITE_FIREBASE_PROJECT_ID);
+
+// Log Firebase configuration status (for debugging)
+console.log('🔥 Firebase Config Status:', {
+  hasConfig: hasFirebaseConfig,
+  hasApiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
+  hasAuthDomain: !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  hasProjectId: !!import.meta.env.VITE_FIREBASE_PROJECT_ID
+});
 
 let app: any = null;
 let auth: any = null;
