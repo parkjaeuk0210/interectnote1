@@ -13,7 +13,7 @@
     },
     "shared_canvases": {
       "$canvasId": {
-        ".read": "data.child('isPublic').val() === true || (auth != null && (data.child('owner').val() === auth.uid || data.child('participants').child(auth.uid).exists()))",
+        ".read": "((data.child('isPublic').val() === true || data.child('shareSettings').child('allowPublicAccess').val() === true) && auth != null) || (auth != null && (data.child('owner').val() === auth.uid || data.child('participants').child(auth.uid).exists()))",
         ".write": "!data.exists() && auth != null || data.child('isPublic').val() === true || (auth != null && (data.child('owner').val() === auth.uid || (data.child('participants').child(auth.uid).child('role').val() === 'editor')))",
         "participants": {
           "$participantId": {
@@ -21,14 +21,14 @@
           }
         },
         "notes": {
-          ".validate": "newData.hasChildren() && newData.children().count() <= 100",
+          ".validate": "newData.hasChildren()",
           "$noteId": {
             ".write": "auth != null && (root.child('shared_canvases').child($canvasId).child('participants').child(auth.uid).child('role').val() === 'editor' || root.child('shared_canvases').child($canvasId).child('owner').val() === auth.uid)",
             ".validate": "newData.hasChildren(['content', 'x', 'y', 'width', 'height', 'color', 'createdAt', 'userId'])"
           }
         },
         "images": {
-          ".validate": "newData.hasChildren() && newData.children().count() <= 50",
+          ".validate": "newData.hasChildren()",
           "$imageId": {
             ".write": "auth != null && (root.child('shared_canvases').child($canvasId).child('participants').child(auth.uid).child('role').val() === 'editor' || root.child('shared_canvases').child($canvasId).child('owner').val() === auth.uid)"
           }
