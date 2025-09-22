@@ -295,10 +295,10 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
 
       // Note actions
       addNote: (x: number, y: number) => {
-        const { canvasId, userRole } = get();
+        const { canvasId, userRole, isOwner } = get();
         const user = auth.currentUser;
         
-        if (!canvasId || !user || userRole !== 'editor') return;
+        if (!canvasId || !user || (!isOwner && userRole !== 'editor')) return;
 
         const state = get();
         const maxZIndex = Math.max(...state.notes.map(n => n.zIndex || 0), 0);
@@ -345,10 +345,10 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
       },
 
       updateNote: (id: string, updates: Partial<Note>) => {
-        const { canvasId, userRole } = get();
+        const { canvasId, userRole, isOwner } = get();
         const user = auth.currentUser;
         
-        if (!canvasId || !user || userRole !== 'editor') return;
+        if (!canvasId || !user || (!isOwner && userRole !== 'editor')) return;
 
         // Optimistic update - immediately update local state
         set((state) => ({
@@ -377,8 +377,8 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
       },
 
       deleteNote: (id: string) => {
-        const { canvasId, userRole } = get();
-        if (!canvasId || userRole !== 'editor') return;
+        const { canvasId, userRole, isOwner } = get();
+        if (!canvasId || (!isOwner && userRole !== 'editor')) return;
 
         set({ isSyncing: true });
         // Optimistically remove locally
@@ -393,15 +393,15 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
       },
 
       selectNote: (id: string | null) => {
-        const { canvasId, userRole } = get();
+        const { canvasId, userRole, isOwner } = get();
         const user = auth.currentUser;
         
         if (id && canvasId && user) {
           // Update presence with selected item
           updatePresence(canvasId, user.uid, { selectedItemId: id });
           
-          // Update z-index if editor
-          if (userRole === 'editor') {
+          // Update z-index if editor or owner
+          if (isOwner || userRole === 'editor') {
             const state = get();
             const maxZIndex = Math.max(...state.notes.map(n => n.zIndex || 0), 0);
             
@@ -418,10 +418,10 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
 
       // Image actions
       addImage: (image: Omit<CanvasImage, 'id' | 'createdAt'>) => {
-        const { canvasId, userRole, images } = get();
+        const { canvasId, userRole, isOwner, images } = get();
         const user = auth.currentUser;
         
-        if (!canvasId || !user || userRole !== 'editor') return;
+        if (!canvasId || !user || (!isOwner && userRole !== 'editor')) return;
         
         // Prevent spam: Limit total images on canvas
         const MAX_IMAGES_PER_CANVAS = 50;
@@ -451,8 +451,8 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
       },
 
       updateImage: (id: string, updates: Partial<CanvasImage>) => {
-        const { canvasId, userRole } = get();
-        if (!canvasId || userRole !== 'editor') return;
+        const { canvasId, userRole, isOwner } = get();
+        if (!canvasId || (!isOwner && userRole !== 'editor')) return;
 
         const firebaseUpdates: any = { ...updates };
         if (updates.createdAt) {
@@ -466,8 +466,8 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
       },
 
       deleteImage: (id: string) => {
-        const { canvasId, userRole } = get();
-        if (!canvasId || userRole !== 'editor') return;
+        const { canvasId, userRole, isOwner } = get();
+        if (!canvasId || (!isOwner && userRole !== 'editor')) return;
 
         set({ isSyncing: true });
         deleteSharedImage(canvasId, id)
@@ -488,10 +488,10 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
 
       // File actions
       addFile: (file: Omit<CanvasFile, 'id' | 'createdAt'>) => {
-        const { canvasId, userRole } = get();
+        const { canvasId, userRole, isOwner } = get();
         const user = auth.currentUser;
         
-        if (!canvasId || !user || userRole !== 'editor') return;
+        if (!canvasId || !user || (!isOwner && userRole !== 'editor')) return;
 
         const firebaseFile: Omit<FirebaseFile, 'id' | 'userId' | 'deviceId'> = {
           url: file.url,
@@ -511,8 +511,8 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
       },
 
       updateFile: (id: string, updates: Partial<CanvasFile>) => {
-        const { canvasId, userRole } = get();
-        if (!canvasId || userRole !== 'editor') return;
+        const { canvasId, userRole, isOwner } = get();
+        if (!canvasId || (!isOwner && userRole !== 'editor')) return;
 
         const firebaseUpdates: any = { ...updates };
         if (updates.createdAt) {
@@ -526,8 +526,8 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
       },
 
       deleteFile: (id: string) => {
-        const { canvasId, userRole } = get();
-        if (!canvasId || userRole !== 'editor') return;
+        const { canvasId, userRole, isOwner } = get();
+        if (!canvasId || (!isOwner && userRole !== 'editor')) return;
 
         set({ isSyncing: true });
         deleteSharedFile(canvasId, id)
