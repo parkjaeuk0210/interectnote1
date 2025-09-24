@@ -45,20 +45,34 @@ const getSettingsPath = (userId: string) => `${getUserPath(userId)}/settings`;
 
 // Notes operations
 export const saveNote = async (userId: string, note: Omit<FirebaseNote, 'id' | 'userId' | 'deviceId'>) => {
-  const notesRef = ref(database, getNotesPath(userId));
-  const newNoteRef = push(notesRef);
-  const noteData = {
-    ...note,
-    id: newNoteRef.key!,
-    userId,
-    deviceId: getDeviceId(),
-  };
-  
-  // Use batch manager for better performance
-  const path = `${getNotesPath(userId)}/${newNoteRef.key}`;
-  realtimeBatchManager.addUpdate(path, noteData);
-  
-  return newNoteRef.key;
+  try {
+    const notesRef = ref(database, getNotesPath(userId));
+    const newNoteRef = push(notesRef);
+    const noteData = {
+      ...note,
+      id: newNoteRef.key!,
+      userId,
+      deviceId: getDeviceId(),
+    };
+    
+    // Use batch manager for better performance
+    const path = `${getNotesPath(userId)}/${newNoteRef.key}`;
+    realtimeBatchManager.addUpdate(path, noteData);
+    
+    return newNoteRef.key;
+  } catch (error: any) {
+    // Log error but don't break the app
+    if (error?.message?.includes('XMLHttpRequest') || 
+        error?.message?.includes('network') ||
+        error?.code === 'unavailable') {
+      console.warn('⚠️ Save Note: Network issue, continuing offline:', error.message);
+    } else {
+      console.error('❌ Save Note failed:', error);
+    }
+    
+    // Generate a local ID so the UI doesn't break
+    return `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
 };
 
 export const updateNote = async (userId: string, noteId: string, updates: Partial<Omit<FirebaseNote, 'id' | 'userId' | 'deviceId'>>) => {

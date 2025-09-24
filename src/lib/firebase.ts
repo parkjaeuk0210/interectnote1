@@ -65,12 +65,29 @@ if (hasFirebaseConfig) {
 // Export Firebase services
 export { auth, googleProvider, database, storage, app };
 
-// Enable offline persistence for Realtime Database
+// Enable offline persistence for Realtime Database with error handling
 if (typeof window !== 'undefined' && database) {
   import('firebase/database').then(({ goOffline, goOnline }) => {
-    // Handle online/offline state
-    window.addEventListener('online', () => goOnline(database));
-    window.addEventListener('offline', () => goOffline(database));
+    // Handle online/offline state with error catching
+    window.addEventListener('online', () => {
+      try {
+        goOnline(database);
+        console.log('🌐 Firebase: Connection restored');
+      } catch (error) {
+        console.warn('⚠️ Firebase: Failed to go online:', error);
+      }
+    });
+    
+    window.addEventListener('offline', () => {
+      try {
+        goOffline(database);
+        console.log('📴 Firebase: Working offline');
+      } catch (error) {
+        console.warn('⚠️ Firebase: Failed to go offline:', error);
+      }
+    });
+  }).catch(error => {
+    console.warn('⚠️ Firebase: Failed to setup offline handling:', error);
   });
 }
 
@@ -141,6 +158,38 @@ export const linkAnonymousWithGoogle = async (user: any) => {
       return user; // User cancelled, continue as anonymous
     }
     throw error;
+  }
+};
+
+// Firebase connection status utility
+export const isFirebaseAvailable = () => {
+  return !!app && !!auth && !!database;
+};
+
+// Graceful Firebase operation wrapper
+export const withFirebaseErrorHandling = async <T>(
+  operation: () => Promise<T>,
+  fallback?: T,
+  operationName: string = 'Firebase operation'
+): Promise<T | null> => {
+  if (!isFirebaseAvailable()) {
+    console.warn(`⚠️ ${operationName}: Firebase not available, using local mode`);
+    return fallback || null;
+  }
+
+  try {
+    return await operation();
+  } catch (error: any) {
+    // Handle common Firebase errors gracefully
+    if (error?.code === 'unavailable' || 
+        error?.message?.includes('Failed to get document') ||
+        error?.message?.includes('XMLHttpRequest') ||
+        error?.message?.includes('network')) {
+      console.warn(`⚠️ ${operationName}: Network issue, continuing offline:`, error.message);
+    } else {
+      console.error(`❌ ${operationName} failed:`, error);
+    }
+    return fallback || null;
   }
 };
 
