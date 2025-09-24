@@ -27,7 +27,7 @@ export const PDFCanvas = ({
   const [isDrawingMode, setIsDrawingMode] = useState(file.isDrawingMode || false);
   const [currentTool, setCurrentTool] = useState<DrawingTool>('pen');
   const [pdfImage, setPdfImage] = useState<HTMLImageElement | null>(null);
-  const [numPages] = useState<number>(0);
+  const [numPages, setNumPages] = useState<number>(0);
   const [currentPage] = useState<number>(1);
 
   const updateFile = useAppStore((state) => state.updateFile);
@@ -35,17 +35,52 @@ export const PDFCanvas = ({
   // PDF를 이미지로 렌더링
   const renderPDFToImage = async () => {
     try {
-      const canvas = document.createElement('canvas');
-      // Canvas 컨텍스트로 PDF 대신 아이콘 렌더링
-      
-      // 임시로 DOM에 추가하여 PDF를 렌더링
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '-9999px';
-      document.body.appendChild(tempDiv);
+      if (!file.url) {
+        console.error('PDF URL이 없습니다.');
+        return;
+      }
 
-      // Canvas 컨텍스트 설정
+      // PDF.js를 사용하여 실제 PDF 렌더링
+      const loadingTask = pdfjs.getDocument(file.url);
+      const pdf = await loadingTask.promise;
+      setNumPages(pdf.numPages);
+
+      // 첫 번째 페이지 렌더링
+      const page = await pdf.getPage(currentPage);
+      const viewport = page.getViewport({ scale: 1.5 });
+
+      // Canvas 생성
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      
+      if (!context) {
+        console.error('Canvas context를 가져올 수 없습니다.');
+        return;
+      }
+
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // PDF 페이지를 canvas에 렌더링
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+
+      await page.render(renderContext).promise;
+
+      // Canvas를 이미지로 변환
+      const img = new Image();
+      img.onload = () => {
+        setPdfImage(img);
+      };
+      img.src = canvas.toDataURL();
+      
+    } catch (error) {
+      console.error('PDF 렌더링 오류:', error);
+      
+      // 오류 발생 시 폴백 아이콘 렌더링
+      const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
       if (!context) return;
 
@@ -56,26 +91,22 @@ export const PDFCanvas = ({
       context.fillStyle = 'white';
       context.fillRect(0, 0, canvas.width, canvas.height);
 
-      // PDF 아이콘과 텍스트 그리기 (실제 PDF 렌더링 대신 임시)
+      // 오류 메시지와 아이콘
       context.fillStyle = '#DC2626';
       context.font = '48px Arial';
       context.textAlign = 'center';
-      context.fillText('📄', canvas.width / 2, canvas.height / 2 - 20);
+      context.fillText('📄', canvas.width / 2, canvas.height / 2 - 40);
       
       context.fillStyle = '#1F2937';
       context.font = '14px Arial';
+      context.fillText('PDF 로딩 실패', canvas.width / 2, canvas.height / 2 + 10);
       context.fillText(file.fileName, canvas.width / 2, canvas.height / 2 + 30);
 
-      // 이미지 객체 생성
       const img = new Image();
       img.onload = () => {
         setPdfImage(img);
-        document.body.removeChild(tempDiv);
       };
       img.src = canvas.toDataURL();
-      
-    } catch (error) {
-      console.error('PDF 렌더링 오류:', error);
     }
   };
 
@@ -129,7 +160,23 @@ export const PDFCanvas = ({
   const handleDoubleClick = () => {
     if (!isDrawingMode) {
       // 그리기 모드가 아닐 때만 파일 열기
-      window.open(file.url, '_blank');
+      try {
+        // Data URL을 Blob으로 변환하여 새 탭에서 열기
+        if (file.url) {
+          const link = document.createElement('a');
+          link.href = file.url;
+          link.target = '_blank';
+          link.download = file.fileName;
+          link.rel = 'noopener noreferrer';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } catch (error) {
+        console.error('PDF 열기 실패:', error);
+        // 폴백으로 기존 방식 시도
+        window.open(file.url, '_blank');
+      }
     }
   };
 
