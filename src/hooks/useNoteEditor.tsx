@@ -103,26 +103,35 @@ export const useNoteEditor = (
   const [editorPosition, setEditorPosition] = useState({ x: 0, y: 0 });
   const [stageScale, setStageScale] = useState(1);
 
+  const updateEditorPosition = useCallback(() => {
+    if (!note || !stageRef.current) return;
+
+    const stage = stageRef.current;
+    const container = stage.container();
+    if (!container) return;
+
+    const scale = stage.scaleX();
+    const stagePosition = stage.position();
+
+    const effectiveScale = scale || 1;
+    const screenX = note.x * effectiveScale + stagePosition.x;
+    const screenY = note.y * effectiveScale + stagePosition.y;
+
+    setEditorPosition({
+      x: container.offsetLeft + screenX + PADDING * effectiveScale,
+      y: container.offsetTop + screenY + PADDING * effectiveScale,
+    });
+    setStageScale(effectiveScale);
+  }, [note, stageRef]);
+
   const startEditing = useCallback(() => {
     if (!note || !stageRef.current) return;
-    
-    const stage = stageRef.current;
-    const scale = stage.scaleX();
-    const container = stage.container();
-    const viewport = { x: stage.x(), y: stage.y() };
-    
-    // Calculate note position in screen coordinates
-    const screenX = note.x * scale + viewport.x;
-    const screenY = note.y * scale + viewport.y;
-    
-    setEditorPosition({
-      x: container.offsetLeft + screenX + PADDING * scale,
-      y: container.offsetTop + screenY + PADDING * scale,
-    });
-    
-    setStageScale(scale);
+
     setIsEditing(true);
-  }, [stageRef, note]);
+    requestAnimationFrame(() => {
+      updateEditorPosition();
+    });
+  }, [note, updateEditorPosition, stageRef]);
 
   const handleSave = useCallback((content: string) => {
     if (!note) return;
@@ -133,6 +142,43 @@ export const useNoteEditor = (
     setIsEditing(false);
     onClose?.();
   }, [onClose]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    updateEditorPosition();
+  }, [isEditing, note?.x, note?.y, note?.width, note?.height, note?.updatedAt, updateEditorPosition]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const handleStageChange = () => {
+      updateEditorPosition();
+    };
+
+    stage.on('xChange yChange scaleXChange scaleYChange', handleStageChange);
+    stage.on('dragmove zoom', handleStageChange);
+
+    const container = stage.container();
+    let resizeObserver: ResizeObserver | null = null;
+    if (container && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        updateEditorPosition();
+      });
+      resizeObserver.observe(container);
+    }
+
+    window.addEventListener('resize', handleStageChange);
+
+    return () => {
+      stage.off('xChange yChange scaleXChange scaleYChange', handleStageChange);
+      stage.off('dragmove zoom', handleStageChange);
+      window.removeEventListener('resize', handleStageChange);
+      resizeObserver?.disconnect();
+    };
+  }, [isEditing, stageRef, updateEditorPosition]);
 
   // Render portal outside of Konva context
   const editorKey = note 

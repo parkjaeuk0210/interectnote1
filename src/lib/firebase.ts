@@ -13,7 +13,10 @@ console.log('🔥 Firebase Config Status:', {
   hasConfig: hasFirebaseConfig,
   hasApiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
   hasAuthDomain: !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  hasProjectId: !!import.meta.env.VITE_FIREBASE_PROJECT_ID
+  hasProjectId: !!import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? 'SET' : 'MISSING',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ? 'SET' : 'MISSING',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ? 'SET' : 'MISSING'
 });
 
 let app: any = null;
@@ -33,12 +36,28 @@ if (hasFirebaseConfig) {
     databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
   };
 
-  // Initialize Firebase
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  googleProvider = new GoogleAuthProvider();
-  database = getDatabase(app);
-  storage = getStorage(app);
+  try {
+    // Initialize Firebase
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    googleProvider = new GoogleAuthProvider();
+    
+    // Configure Google provider with additional settings
+    googleProvider.addScope('email');
+    googleProvider.addScope('profile');
+    googleProvider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
+    database = getDatabase(app);
+    storage = getStorage(app);
+    
+    console.log('✅ Firebase initialized successfully');
+    console.log('Auth domain:', import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
+    
+  } catch (error) {
+    console.error('❌ Firebase initialization failed:', error);
+  }
 } else {
   console.warn('❌ Firebase configuration not found. Running in local-only mode.');
 }

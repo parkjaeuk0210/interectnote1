@@ -68,6 +68,11 @@ export const InfiniteCanvas = React.memo(() => {
     isCanvasDragging,
   });
   
+  // Check if any PDF is in drawing mode
+  const isAnyPDFInDrawingMode = files.some(file => 
+    file.fileType === 'pdf' && file.isDrawingMode
+  );
+  
   // Canvas gestures
   const canvasGestures = useCanvasGestures({
     containerRef,
@@ -77,6 +82,7 @@ export const InfiniteCanvas = React.memo(() => {
     updateViewportRAF,
     isAnyNoteResizing,
     isAnyNoteDragging,
+    isInDrawingMode: isAnyPDFInDrawingMode,
   });
   
   // Update canvas dragging state

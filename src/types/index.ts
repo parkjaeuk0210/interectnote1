@@ -27,6 +27,44 @@ export interface CanvasState {
 
 export type FileType = 'image' | 'pdf' | 'document' | 'other';
 
+// PDF Annotation Types
+export type DrawingTool = 'pen' | 'highlighter' | 'eraser' | 'none';
+
+export interface Point {
+  x: number;
+  y: number;
+  pressure: number;
+  inputType?: 'mouse' | 'touch' | 'pen';
+}
+
+export interface DrawingStroke {
+  points: Point[];
+  style: DrawingStyle;
+  timestamp: number;
+}
+
+export interface DrawingStyle {
+  stroke: string;
+  strokeWidth: number;
+  opacity?: number;
+  globalCompositeOperation?: string;
+}
+
+export interface PDFAnnotation {
+  id: string;
+  type: 'highlight' | 'text' | 'draw';
+  page: number;
+  position: { x: number; y: number };
+  content?: string;
+  author: string;
+  createdAt: Date;
+}
+
+export interface DrawingAnnotation extends PDFAnnotation {
+  type: 'draw';
+  strokes: DrawingStroke[];
+}
+
 export interface CanvasFile {
   id: string;
   x: number;
@@ -39,6 +77,14 @@ export interface CanvasFile {
   url: string;
   thumbnailUrl?: string;
   createdAt: Date;
+  // PDF-specific properties
+  pdfData?: {
+    numPages: number;
+    pageSize: { width: number; height: number };
+    annotations: PDFAnnotation[];
+  };
+  editMode?: 'view' | 'annotate';
+  isDrawingMode?: boolean;
 }
 
 export interface CanvasImage {

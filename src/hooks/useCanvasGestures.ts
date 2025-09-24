@@ -17,6 +17,7 @@ interface UseCanvasGesturesProps {
   updateViewportRAF: (viewport: Viewport) => void;
   isAnyNoteResizing: boolean;
   isAnyNoteDragging: boolean;
+  isInDrawingMode?: boolean; // PDF 그리기 모드
 }
 
 export const useCanvasGestures = ({
@@ -27,6 +28,7 @@ export const useCanvasGestures = ({
   updateViewportRAF,
   isAnyNoteResizing,
   isAnyNoteDragging,
+  isInDrawingMode = false,
 }: UseCanvasGesturesProps) => {
   const [isCanvasDragging, setIsCanvasDragging] = useState(false);
   const [isPinching, setIsPinching] = useState(false);
@@ -88,7 +90,7 @@ export const useCanvasGestures = ({
       },
       
       onDragStart: ({ event, touches }) => {
-        if (isAnyNoteResizing || isAnyNoteDragging) return;
+        if (isAnyNoteResizing || isAnyNoteDragging || isInDrawingMode) return;
         
         // Don't start drag if it's a multi-touch (pinch gesture)
         if (touches && touches > 1) return;
@@ -109,8 +111,8 @@ export const useCanvasGestures = ({
       },
       
       onDrag: ({ delta: [dx, dy], pinching, event, touches }) => {
-        // Don't handle drag if pinching or multi-touch
-        if (pinching || !isCanvasDragging || isAnyNoteResizing || isAnyNoteDragging) return;
+        // Don't handle drag if pinching, multi-touch, or in drawing mode
+        if (pinching || !isCanvasDragging || isAnyNoteResizing || isAnyNoteDragging || isInDrawingMode) return;
         if (touches && touches > 1) return;
         
         const target = event.target as HTMLElement;
@@ -183,7 +185,7 @@ export const useCanvasGestures = ({
       drag: { 
         filterTaps: true,
         from: () => [viewport.x, viewport.y],
-        enabled: !isAnyNoteResizing && !isAnyNoteDragging && !isPinching,
+        enabled: !isAnyNoteResizing && !isAnyNoteDragging && !isPinching && !isInDrawingMode,
         threshold: isMobileDevice ? 10 : 5,
         pointer: { 
           touch: true, 

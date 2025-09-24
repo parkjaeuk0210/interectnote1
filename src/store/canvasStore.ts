@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { undoable } from './middleware/undoable';
 import { toast } from '../utils/toast';
-import { Note, NoteColor, Viewport, CanvasImage, CanvasFile } from '../types';
+import { Note, NoteColor, Viewport, CanvasImage, CanvasFile, PDFAnnotation } from '../types';
 
 export interface CanvasStore {
   notes: Note[];
@@ -28,6 +28,12 @@ export interface CanvasStore {
   updateFile: (id: string, updates: Partial<CanvasFile>) => void;
   deleteFile: (id: string) => void;
   selectFile: (id: string | null) => void;
+  
+  // PDF annotation actions
+  addPDFAnnotation: (fileId: string, annotation: PDFAnnotation) => void;
+  updatePDFAnnotation: (fileId: string, annotationId: string, updates: Partial<PDFAnnotation>) => void;
+  deletePDFAnnotation: (fileId: string, annotationId: string) => void;
+  setPDFDrawingMode: (fileId: string, isDrawing: boolean) => void;
   
   setViewport: (viewport: Viewport) => void;
   
@@ -257,6 +263,70 @@ export const useCanvasStore = create<CanvasStore>()(
       
       setDarkMode: (isDark) => {
         set({ isDarkMode: isDark });
+      },
+      
+      // PDF annotation actions
+      addPDFAnnotation: (fileId: string, annotation: PDFAnnotation) => {
+        set((state) => ({
+          files: state.files.map((file) => {
+            if (file.id === fileId && file.fileType === 'pdf') {
+              const currentAnnotations = file.pdfData?.annotations || [];
+              return {
+                ...file,
+                pdfData: {
+                  numPages: file.pdfData?.numPages || 1,
+                  pageSize: file.pdfData?.pageSize || { width: file.width, height: file.height },
+                  annotations: [...currentAnnotations, annotation]
+                }
+              };
+            }
+            return file;
+          })
+        }));
+      },
+      
+      updatePDFAnnotation: (fileId: string, annotationId: string, updates: Partial<PDFAnnotation>) => {
+        set((state) => ({
+          files: state.files.map((file) => {
+            if (file.id === fileId && file.fileType === 'pdf' && file.pdfData) {
+              return {
+                ...file,
+                pdfData: {
+                  ...file.pdfData,
+                  annotations: file.pdfData.annotations.map(ann => 
+                    ann.id === annotationId ? { ...ann, ...updates } : ann
+                  )
+                }
+              };
+            }
+            return file;
+          })
+        }));
+      },
+      
+      deletePDFAnnotation: (fileId: string, annotationId: string) => {
+        set((state) => ({
+          files: state.files.map((file) => {
+            if (file.id === fileId && file.fileType === 'pdf' && file.pdfData) {
+              return {
+                ...file,
+                pdfData: {
+                  ...file.pdfData,
+                  annotations: file.pdfData.annotations.filter(ann => ann.id !== annotationId)
+                }
+              };
+            }
+            return file;
+          })
+        }));
+      },
+      
+      setPDFDrawingMode: (fileId: string, isDrawing: boolean) => {
+        set((state) => ({
+          files: state.files.map((file) => 
+            file.id === fileId ? { ...file, isDrawingMode: isDrawing } : file
+          )
+        }));
       },
       
       // These will be provided by the undoable middleware

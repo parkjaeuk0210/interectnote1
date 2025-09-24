@@ -3,6 +3,7 @@ import { Group, Rect, Text } from 'react-konva';
 import Konva from 'konva';
 import { CanvasFile as CanvasFileType } from '../../types';
 import { useAppStore } from '../../contexts/StoreProvider';
+import { PDFCanvas } from '../PDF/PDFCanvas';
 
 interface CanvasFileProps {
   file: CanvasFileType;
@@ -17,6 +18,17 @@ export const CanvasFile = ({
   onSelect,
   onDraggingChange
 }: CanvasFileProps) => {
+  // PDF 파일은 PDFCanvas로 렌더링
+  if (file.fileType === 'pdf') {
+    return (
+      <PDFCanvas
+        file={file}
+        isSelected={isSelected}
+        onSelect={onSelect}
+        onDraggingChange={onDraggingChange}
+      />
+    );
+  }
   const groupRef = useRef<Konva.Group>(null);
   const [isDragging, setIsDragging] = useState(false);
   
