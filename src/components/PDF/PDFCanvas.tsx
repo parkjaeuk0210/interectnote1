@@ -234,6 +234,8 @@ export const PDFCanvas = ({
           currentTool={currentTool}
           onAddAnnotation={handleAddAnnotation}
           onUpdateAnnotation={handleUpdateAnnotation}
+          width={file.width}
+          height={file.height}
         />
 
         {/* 페이지 정보 */}

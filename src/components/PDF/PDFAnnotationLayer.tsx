@@ -9,13 +9,17 @@ interface PDFAnnotationLayerProps {
   currentTool: DrawingTool;
   onAddAnnotation: (annotation: DrawingAnnotation) => void;
   onUpdateAnnotation?: (id: string, annotation: Partial<DrawingAnnotation>) => void;
+  width: number;
+  height: number;
 }
 
 export const PDFAnnotationLayer = ({
   annotations,
   isDrawingMode,
   currentTool,
-  onAddAnnotation
+  onAddAnnotation,
+  width,
+  height
 }: PDFAnnotationLayerProps) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
@@ -239,10 +243,12 @@ export const PDFAnnotationLayer = ({
       onMouseMove={handleMouseMove}
       onMouseUp={handlePointerUp}
     >
-      {/* 투명한 그리기 영역 */}
+      {/* 투명한 그리기 영역 (PDF 크기에 맞춤) */}
       <Rect
-        width={10000} // 충분히 큰 크기
-        height={10000}
+        x={0}
+        y={0}
+        width={width}
+        height={height}
         fill="transparent"
         listening={isDrawingMode}
       />
