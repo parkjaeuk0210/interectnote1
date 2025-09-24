@@ -231,29 +231,27 @@ export const PDFAnnotationLayer = ({
   };
 
   return (
-    <Group
-      listening={isDrawingMode}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handlePointerUp}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handlePointerUp}
-    >
-      {/* 투명한 그리기 영역 (PDF 크기에 맞춤) */}
-      <Rect
-        x={0}
-        y={0}
-        width={width}
-        height={height}
-        fill="transparent"
-        listening={isDrawingMode}
-      />
-      
-      {/* 기존 주석들 렌더링 */}
+    <Group>
+      {isDrawingMode && (
+        <Rect
+          x={0}
+          y={0}
+          width={Math.max(1, width || 0)}
+          height={Math.max(1, height || 0)}
+          fill="transparent"
+          listening
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handlePointerUp}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handlePointerUp}
+        />
+      )}
+
       {annotations.map(annotation => (
         <Group key={annotation.id}>
           {annotation.strokes.map((stroke, strokeIndex) => (
@@ -265,7 +263,7 @@ export const PDFAnnotationLayer = ({
           ))}
         </Group>
       ))}
-      
+
       {/* 현재 그리고 있는 선 */}
       {isDrawing && currentStroke.length > 1 && (
         <SmoothedLine 
