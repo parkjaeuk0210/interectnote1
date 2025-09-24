@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Layer, Line, Group } from 'react-konva';
+import { Line, Group, Rect } from 'react-konva';
 import Konva from 'konva';
 import { Point, DrawingTool, DrawingAnnotation, DrawingStyle } from '../../types';
 
@@ -227,7 +227,7 @@ export const PDFAnnotationLayer = ({
   };
 
   return (
-    <Layer
+    <Group
       listening={isDrawingMode}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -239,6 +239,14 @@ export const PDFAnnotationLayer = ({
       onMouseMove={handleMouseMove}
       onMouseUp={handlePointerUp}
     >
+      {/* 투명한 그리기 영역 */}
+      <Rect
+        width={10000} // 충분히 큰 크기
+        height={10000}
+        fill="transparent"
+        listening={isDrawingMode}
+      />
+      
       {/* 기존 주석들 렌더링 */}
       {annotations.map(annotation => (
         <Group key={annotation.id}>
@@ -259,7 +267,7 @@ export const PDFAnnotationLayer = ({
           style={getDrawingStyle(currentTool)}
         />
       )}
-    </Layer>
+    </Group>
   );
 };
 
