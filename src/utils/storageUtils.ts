@@ -23,16 +23,16 @@ export const getLocalStorageSizeForKey = (key: string): number => {
 
 export const getLocalStorageUsagePercent = (): number => {
   // Most browsers have a 5-10MB limit for localStorage
-  // We'll use 5MB as a conservative estimate
-  const ESTIMATED_LIMIT = 5 * 1024 * 1024; // 5MB in bytes
+  // We'll use 10MB as a more generous estimate to support larger PDF files
+  const ESTIMATED_LIMIT = 10 * 1024 * 1024; // 10MB in bytes (increased from 5MB)
   const currentSize = getLocalStorageSize();
   
   return Math.round((currentSize / ESTIMATED_LIMIT) * 100);
 };
 
 export const isLocalStorageNearLimit = (): boolean => {
-  // Warn when storage is above 80%
-  return getLocalStorageUsagePercent() > 80;
+  // Warn when storage is above 85% (relaxed from 80% to allow larger files)
+  return getLocalStorageUsagePercent() > 85;
 };
 
 export const formatStorageSize = (bytes: number): string => {

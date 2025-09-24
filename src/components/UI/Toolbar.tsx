@@ -100,7 +100,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
             const compressedSize = getDataUrlSize(compressedUrl);
             
             // Check if compressed size is reasonable for localStorage
-            if (compressedSize > 1024 * 1024) { // 1MB limit per image
+            if (compressedSize > 3 * 1024 * 1024) { // 3MB limit per image (increased from 1MB)
               toast.warning(`이미지 "${file.name}"의 크기가 너무 큽니다 (${formatBytes(compressedSize)}). 더 작은 이미지를 사용해주세요.`);
               return;
             }
@@ -151,10 +151,15 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
           if (fileType === 'application/pdf') fileTypeCategory = 'pdf';
           else if (fileType.includes('document') || fileType.includes('text')) fileTypeCategory = 'document';
           
-          // Check file size for non-images too
+          // Check file size for non-images - PDF files get higher limit
           const fileDataSize = getDataUrlSize(url);
-          if (fileDataSize > 500 * 1024) { // 500KB limit for other files
-            toast.warning(`파일 "${file.name}"의 크기가 너무 큽니다 (${formatBytes(fileDataSize)}). 더 작은 파일을 사용해주세요.`);
+          const sizeLimit = fileTypeCategory === 'pdf' 
+            ? 10 * 1024 * 1024  // 10MB limit for PDF files
+            : 2 * 1024 * 1024;  // 2MB limit for other files (increased from 500KB)
+          
+          if (fileDataSize > sizeLimit) {
+            const limitText = fileTypeCategory === 'pdf' ? '10MB' : '2MB';
+            toast.warning(`파일 "${file.name}"의 크기가 너무 큽니다 (${formatBytes(fileDataSize)}). ${limitText} 이하의 파일을 사용해주세요.`);
             return;
           }
           
