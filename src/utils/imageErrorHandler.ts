@@ -3,8 +3,6 @@
  * 삭제된 이미지/파일을 감지하고 DB에서 제거
  */
 
-import { useAppStore } from '../contexts/StoreProvider';
-
 export const handleImageLoadError = (imageId: string, url: string) => {
   console.warn(`⚠️ Image load failed: ${imageId}`, url);
 
@@ -37,10 +35,14 @@ export const isFirebaseStorageUrl = (url: string): boolean => {
 
 /**
  * 끊어진 리소스 정리 유틸리티
+ * Note: 사용 시 스토어를 직접 import하여 사용
  */
-export const cleanupBrokenResources = async () => {
-  const { images, files, deleteImage, deleteFile } = useAppStore.getState();
-
+export const cleanupBrokenResources = async (
+  images: Array<{ id: string; url: string }>,
+  files: Array<{ id: string; url: string }>,
+  deleteImage: (id: string) => void,
+  deleteFile: (id: string) => void
+) => {
   const brokenImages: string[] = [];
   const brokenFiles: string[] = [];
 
