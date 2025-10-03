@@ -51,13 +51,12 @@ const undoableImpl: Undoable = (initializer, options = {}) => {
       set(partial, replace);
       
       const nextState = get();
-
-      // Track only when structural references for notes/images/files actually change.
-      // Avoids expensive JSON serialization during high-frequency viewport updates.
-      const hasTrackedChanges =
-        (prevState as any).notes !== (nextState as any).notes ||
-        (prevState as any).images !== (nextState as any).images ||
-        (prevState as any).files !== (nextState as any).files;
+      
+      // Check if state changed in tracked properties
+      const hasTrackedChanges = 
+        JSON.stringify((prevState as any).notes) !== JSON.stringify((nextState as any).notes) ||
+        JSON.stringify((prevState as any).images) !== JSON.stringify((nextState as any).images) ||
+        JSON.stringify((prevState as any).files) !== JSON.stringify((nextState as any).files);
       
       // Only track if tracked properties changed
       const shouldTrack = hasTrackedChanges;

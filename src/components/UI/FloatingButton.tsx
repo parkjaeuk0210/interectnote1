@@ -13,7 +13,7 @@ export const FloatingButton = () => {
   return (
     <button
       onClick={handleAddNote}
-      className="fixed right-6 bottom-24 w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center group"
+      className="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center group"
       style={{ 
         zIndex: 9999,
         boxShadow: '0 4px 20px rgba(79, 70, 229, 0.4), 0 2px 8px rgba(0, 0, 0, 0.1)'
