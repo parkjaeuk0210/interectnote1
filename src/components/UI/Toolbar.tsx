@@ -186,8 +186,8 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
   };
 
   return (
-    <div className="fixed right-6 bottom-24 glass rounded-full px-3 py-6 shadow-lg">
-      <div className="flex flex-col items-center gap-4">
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 glass rounded-full px-6 py-3 shadow-lg">
+      <div className="flex items-center gap-4">
         <input
           ref={fileInputRef}
           type="file"
@@ -209,7 +209,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
 
         {user && (
           <>
-            <div className="w-6 h-px bg-gray-300" />
+            <div className="w-px h-6 bg-gray-300" />
             
             <button
               onClick={() => setShowShareModal(true)}
@@ -254,7 +254,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
 
         {selectedNote && (
           <>
-            <div className="w-6 h-px bg-gray-300" />
+            <div className="w-px h-6 bg-gray-300" />
             
             <ColorPicker
               currentColor={selectedNote.color}
@@ -275,7 +275,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
         
         {(selectedImageId || selectedFileId) && (
           <>
-            <div className="w-6 h-px bg-gray-300" />
+            <div className="w-px h-6 bg-gray-300" />
             
             <button
               onClick={handleDelete}
@@ -291,7 +291,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
 
         {notes.length > 0 && (
           <>
-            <div className="w-6 h-px bg-gray-300" />
+            <div className="w-px h-6 bg-gray-300" />
             
             <button
               onClick={() => {

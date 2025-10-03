@@ -40,26 +40,39 @@ export default defineConfig({
     // 번들 사이즈 최적화
     rollupOptions: {
       output: {
-        manualChunks: {
+        manualChunks: (id) => {
+          // PDF.js를 별도 청크로 분리 (동적 로딩)
+          if (id.includes('pdfjs-dist')) {
+            return 'pdf-viewer';
+          }
+          if (id.includes('react-pdf')) {
+            return 'pdf-viewer';
+          }
+
           // React 관련 라이브러리 분리
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+            return 'react-vendor';
+          }
+
           // Firebase 관련 분리 (가장 큰 덩어리)
-          'firebase': [
-            'firebase/app', 
-            'firebase/auth', 
-            'firebase/database', 
-            'firebase/storage'
-          ],
-          
+          if (id.includes('firebase')) {
+            return 'firebase';
+          }
+
           // 캔버스 관련 라이브러리 분리
-          'canvas': ['konva', 'react-konva'],
-          
+          if (id.includes('konva')) {
+            return 'canvas';
+          }
+
           // 제스처/UI 라이브러리 분리
-          'gestures': ['@use-gesture/react'],
-          
+          if (id.includes('@use-gesture')) {
+            return 'gestures';
+          }
+
           // 상태 관리
-          'state': ['zustand']
+          if (id.includes('zustand')) {
+            return 'state';
+          }
         }
       }
     },

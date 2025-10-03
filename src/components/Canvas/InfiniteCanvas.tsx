@@ -8,6 +8,7 @@ import { useCanvasGestures } from '../../hooks/useCanvasGestures';
 import { useWindowResize } from '../../hooks/useWindowResize';
 import { useCanvasHandlers } from '../../hooks/useCanvasHandlers';
 import { useMobileOptimizations } from '../../hooks/useMobileOptimizations';
+import { useViewportCulling } from '../../hooks/useViewportCulling';
 import Konva from 'konva';
 import { getPerformanceMode } from '../../utils/device';
 
@@ -28,15 +29,20 @@ export const InfiniteCanvas = React.memo(() => {
   const selectedFileId = useAppStore((state) => state.selectedFileId);
   const selectImage = useAppStore((state) => state.selectImage);
   const selectFile = useAppStore((state) => state.selectFile);
+
+  // Window dimensions
+  const dimensions = useWindowResize();
+
+  // 뷰포트 기반 가상화 (화면에 보이는 아이템만 렌더링)
+  const visibleNotes = useViewportCulling(notes, viewport, dimensions.width, dimensions.height);
+  const visibleImages = useViewportCulling(images, viewport, dimensions.width, dimensions.height);
+  const visibleFiles = useViewportCulling(files, viewport, dimensions.width, dimensions.height);
   
   // Device optimizations
   const performanceMode = useMemo(() => getPerformanceMode(), []);
   
   // Apply mobile optimizations
   useMobileOptimizations();
-  
-  // Window dimensions
-  const dimensions = useWindowResize();
   
   // Check if any note is currently being resized or dragged
   const [isAnyNoteResizing, setIsAnyNoteResizing] = useState(false);
@@ -148,9 +154,9 @@ export const InfiniteCanvas = React.memo(() => {
         pixelRatio={performanceMode === 'low' ? 1 : window.devicePixelRatio}
       >
         <CanvasItems
-          notes={notes}
-          images={images}
-          files={files}
+          notes={visibleNotes}
+          images={visibleImages}
+          files={visibleFiles}
           editingNoteId={editingNoteId}
           selectedImageId={selectedImageId}
           selectedFileId={selectedFileId}

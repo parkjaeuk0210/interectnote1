@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Layer } from 'react-konva';
 import { EnterpriseNote } from '../Note/EnterpriseNote';
 import { CanvasImage } from './CanvasImage';
@@ -19,7 +19,7 @@ interface CanvasItemsProps {
   setIsAnyNoteDragging: (isDragging: boolean) => void;
 }
 
-export const CanvasItems: React.FC<CanvasItemsProps> = ({
+export const CanvasItems: React.FC<CanvasItemsProps> = React.memo(({
   notes,
   images,
   files,
@@ -32,6 +32,11 @@ export const CanvasItems: React.FC<CanvasItemsProps> = ({
   setIsAnyNoteResizing,
   setIsAnyNoteDragging,
 }) => {
+  // 정렬 메모이제이션 (매번 spread + sort 하지 않음)
+  const sortedNotes = useMemo(() => {
+    return [...notes].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+  }, [notes]);
+
   return (
     <Layer>
       {/* Render images */}
@@ -49,7 +54,7 @@ export const CanvasItems: React.FC<CanvasItemsProps> = ({
           }}
         />
       ))}
-      
+
       {/* Render files */}
       {files.map((file) => (
         <CanvasFile
@@ -62,24 +67,22 @@ export const CanvasItems: React.FC<CanvasItemsProps> = ({
           }}
         />
       ))}
-      
+
       {/* Render notes sorted by zIndex */}
-      {[...notes]
-        .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
-        .map((note) => (
-          <EnterpriseNote 
-            key={note.id} 
-            note={note} 
-            isEditing={editingNoteId === note.id}
-            onStartEditing={() => setEditingNoteId(note.id)}
-            onResizingChange={(isResizing) => {
-              setIsAnyNoteResizing(isResizing);
-            }}
-            onDraggingChange={(isDragging) => {
-              setIsAnyNoteDragging(isDragging);
-            }}
-          />
-        ))}
+      {sortedNotes.map((note) => (
+        <EnterpriseNote
+          key={note.id}
+          note={note}
+          isEditing={editingNoteId === note.id}
+          onStartEditing={() => setEditingNoteId(note.id)}
+          onResizingChange={(isResizing) => {
+            setIsAnyNoteResizing(isResizing);
+          }}
+          onDraggingChange={(isDragging) => {
+            setIsAnyNoteDragging(isDragging);
+          }}
+        />
+      ))}
     </Layer>
   );
-};
+});

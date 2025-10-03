@@ -1,14 +1,31 @@
 import { useState, useEffect } from 'react';
 import { Group, Rect, Text, Image as KonvaImage } from 'react-konva';
-import { pdfjs } from 'react-pdf';
 import Konva from 'konva';
 import { CanvasFile, DrawingTool, DrawingAnnotation } from '../../types';
 import { PDFAnnotationLayer } from './PDFAnnotationLayer';
 import { DrawingToolbar, useDrawingKeyboardShortcuts } from './DrawingToolbar';
 import { useAppStore } from '../../contexts/StoreProvider';
 
-// PDF.js worker 설정
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// PDF.js를 동적으로 로딩 (번들 크기 최적화)
+let pdfjsLib: any = null;
+let workerInitialized = false;
+
+const initPdfJs = async () => {
+  if (pdfjsLib) return pdfjsLib;
+
+  // 동적으로 pdfjs-dist 로딩
+  const pdfjs = await import('pdfjs-dist');
+  pdfjsLib = pdfjs;
+
+  // Worker를 동적으로 로딩
+  if (!workerInitialized) {
+    const PdfJsWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs?worker');
+    pdfjs.GlobalWorkerOptions.workerPort = new PdfJsWorker.default();
+    workerInitialized = true;
+  }
+
+  return pdfjsLib;
+};
 
 interface PDFCanvasProps {
   file: CanvasFile;
@@ -39,6 +56,9 @@ export const PDFCanvas = ({
         console.error('PDF URL이 없습니다.');
         return;
       }
+
+      // PDF.js를 동적으로 로딩
+      const pdfjs = await initPdfJs();
 
       // PDF.js를 사용하여 실제 PDF 렌더링
       const loadingTask = pdfjs.getDocument(file.url);
