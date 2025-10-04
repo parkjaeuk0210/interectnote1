@@ -5,7 +5,7 @@ interface HistoryState {
   redoStack: any[];
   currentState: any | null;
   
-  pushState: (state: any, limit?: number) => void;
+  pushState: (previousState: any, nextState: any, limit?: number) => void;
   undo: () => any | null;
   redo: () => any | null;
   canUndo: () => boolean;
@@ -18,29 +18,21 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   redoStack: [],
   currentState: null,
   
-  pushState: (state, limit = 50) => {
-    const { currentState, undoStack } = get();
-    
-    // If there's a current state, push it to undo stack
-    if (currentState !== null) {
-      const newUndoStack = [...undoStack, currentState];
-      
-      // Limit the undo stack size
-      if (newUndoStack.length > limit) {
-        newUndoStack.shift();
-      }
-      
-      set({
-        undoStack: newUndoStack,
-        currentState: state,
-        redoStack: [], // Clear redo stack when new action is performed
-      });
-    } else {
-      // First state
-      set({
-        currentState: state,
-      });
+  pushState: (previousState, nextState, limit = 50) => {
+    const { undoStack } = get();
+
+    const newUndoStack = [...undoStack, previousState];
+
+    // Limit the undo stack size
+    if (newUndoStack.length > limit) {
+      newUndoStack.shift();
     }
+
+    set({
+      undoStack: newUndoStack,
+      currentState: nextState,
+      redoStack: [], // Clear redo stack when new action is performed
+    });
   },
   
   undo: () => {

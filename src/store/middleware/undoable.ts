@@ -25,10 +25,30 @@ type UndoableOptions = {
   limit?: number;
 };
 
+type HistorySnapshot = {
+  notes: any[];
+  images: any[];
+  files: any[];
+  viewport: any;
+  selectedNoteId: string | null;
+  selectedImageId: string | null;
+  selectedFileId: string | null;
+};
+
 type Undoable = <T extends object>(
   initializer: StateCreator<T, [], []>,
   options?: UndoableOptions
 ) => StateCreator<T, [], []>;
+
+const createHistorySnapshot = (state: any): HistorySnapshot => ({
+  notes: deepClone(state?.notes ?? []),
+  images: deepClone(state?.images ?? []),
+  files: deepClone(state?.files ?? []),
+  viewport: deepClone(state?.viewport ?? { x: 0, y: 0, scale: 1 }),
+  selectedNoteId: state?.selectedNoteId ?? null,
+  selectedImageId: state?.selectedImageId ?? null,
+  selectedFileId: state?.selectedFileId ?? null,
+});
 
 const undoableImpl: Undoable = (initializer, options = {}) => {
   const {
@@ -46,11 +66,13 @@ const undoableImpl: Undoable = (initializer, options = {}) => {
       }
 
       const prevState = get();
+      const previousSnapshot = createHistorySnapshot(prevState as any);
       
       // Call the original set
       set(partial, replace);
       
       const nextState = get();
+      const nextSnapshot = createHistorySnapshot(nextState as any);
       
       // Check if state changed in tracked properties
       const hasTrackedChanges = 
@@ -62,19 +84,7 @@ const undoableImpl: Undoable = (initializer, options = {}) => {
       const shouldTrack = hasTrackedChanges;
       
       if (shouldTrack && !isStateEqual(prevState, nextState)) {
-        // Only save the parts we care about for undo/redo
-        // Deep clone to avoid future mutations leaking into history snapshots
-        const snapshot = {
-          notes: deepClone((nextState as any).notes),
-          images: deepClone((nextState as any).images),
-          files: deepClone((nextState as any).files),
-          viewport: deepClone((nextState as any).viewport || { x: 0, y: 0, scale: 1 }),
-          selectedNoteId: (nextState as any).selectedNoteId || null,
-          selectedImageId: (nextState as any).selectedImageId || null,
-          selectedFileId: (nextState as any).selectedFileId || null,
-        };
-
-        historyStore.pushState(snapshot, limit);
+        historyStore.pushState(previousSnapshot, nextSnapshot, limit);
       }
     };
 

@@ -64,8 +64,8 @@ describe('storageUtils', () => {
       jest.spyOn(storageUtils, 'getLocalStorageSize').mockReturnValue(oneMB);
       
       const percent = storageUtils.getLocalStorageUsagePercent();
-      // 1MB / 5MB * 100 = 20%
-      expect(percent).toBe(20);
+      // 1MB / 10MB * 100 = 10%
+      expect(percent).toBe(10);
     });
   });
 
@@ -78,7 +78,7 @@ describe('storageUtils', () => {
     });
 
     it('should return true when usage is above 80%', () => {
-      jest.spyOn(storageUtils, 'getLocalStorageUsagePercent').mockReturnValue(85);
+      jest.spyOn(storageUtils, 'getLocalStorageUsagePercent').mockReturnValue(86);
       
       const nearLimit = storageUtils.isLocalStorageNearLimit();
       expect(nearLimit).toBe(true);

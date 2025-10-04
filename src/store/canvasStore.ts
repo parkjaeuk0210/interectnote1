@@ -47,6 +47,54 @@ export interface CanvasStore {
 
 const defaultColors: NoteColor[] = ['yellow', 'pink', 'blue', 'green', 'purple', 'orange'];
 
+const reviveCanvasStoreState = (state: Partial<CanvasStore> | undefined | null): Partial<CanvasStore> => {
+  if (!state || typeof state !== 'object') {
+    return {};
+  }
+
+  const reviveDate = (value: unknown) => (value ? new Date(value as string | number) : new Date());
+
+  const notes = Array.isArray(state.notes)
+    ? state.notes.map((note) => ({
+        ...note,
+        createdAt: reviveDate(note.createdAt),
+        updatedAt: reviveDate(note.updatedAt),
+      }))
+    : undefined;
+
+  const images = Array.isArray(state.images)
+    ? state.images.map((image) => ({
+        ...image,
+        createdAt: reviveDate(image.createdAt),
+      }))
+    : undefined;
+
+  const files = Array.isArray(state.files)
+    ? state.files.map((file) => ({
+        ...file,
+        createdAt: reviveDate(file.createdAt),
+        pdfData: file.pdfData
+          ? {
+              ...file.pdfData,
+              annotations: Array.isArray(file.pdfData.annotations)
+                ? file.pdfData.annotations.map((annotation) => ({
+                    ...annotation,
+                    createdAt: reviveDate(annotation.createdAt),
+                  }))
+                : [],
+            }
+          : undefined,
+      }))
+    : undefined;
+
+  return {
+    ...state,
+    ...(notes ? { notes } : {}),
+    ...(images ? { images } : {}),
+    ...(files ? { files } : {}),
+  };
+};
+
 export const useCanvasStore = create<CanvasStore>()(
   persist(
     undoable(
@@ -336,6 +384,14 @@ export const useCanvasStore = create<CanvasStore>()(
     ),
     {
       name: 'interectnote-storage',
+      merge: (persistedState: any, currentState) => {
+        const revivedState = reviveCanvasStoreState(persistedState as Partial<CanvasStore>);
+        const { undo, redo, ...rest } = revivedState;
+        return {
+          ...currentState,
+          ...rest,
+        };
+      },
     }
   )
 );

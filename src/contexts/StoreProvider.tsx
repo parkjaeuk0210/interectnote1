@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { useCanvasStore, CanvasStore } from '../store/canvasStore';
 import { useFirebaseCanvasStore, FirebaseCanvasStore } from '../store/firebaseCanvasStore';
@@ -13,24 +13,16 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
-  const firebaseStore = useFirebaseCanvasStore();
-  const sharedStore = useSharedCanvasStore();
-  const [isSharedMode, setIsSharedMode] = useState(false);
+  const initializeFirebaseSync = useFirebaseCanvasStore((state) => state.initializeFirebaseSync);
+  const cleanupFirebaseSync = useFirebaseCanvasStore((state) => state.cleanupFirebaseSync);
+  const sharedCanvasId = useSharedCanvasStore((state) => state.canvasId);
+  const cleanupSharedCanvas = useSharedCanvasStore((state) => state.cleanupSharedCanvas);
   
   // Use Firebase mode if user is logged in and not anonymous
+  const isSharedMode = !!sharedCanvasId;
   const isFirebaseMode = !loading && !!user && !user.isAnonymous && !isSharedMode;
 
   // Check if we're in shared canvas mode
-  useEffect(() => {
-    const checkSharedMode = () => {
-      // Check if already in a shared canvas
-      const sharedCanvasId = sharedStore.canvasId;
-      setIsSharedMode(!!sharedCanvasId);
-    };
-
-    checkSharedMode();
-  }, [sharedStore.canvasId]);
-
   useEffect(() => {
     console.log('[StoreProvider] Auth state changed:', {
       user: user?.uid,
@@ -57,22 +49,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } else if (isFirebaseMode && user) {
       console.log('[StoreProvider] Initializing Firebase mode for user:', user.uid);
       // Initialize Firebase sync
-      firebaseStore.initializeFirebaseSync(user.uid);
+      initializeFirebaseSync(user.uid);
     } else {
       console.log('[StoreProvider] Using local mode (no auth or anonymous)');
       // Cleanup Firebase sync when logged out
-      firebaseStore.cleanupFirebaseSync();
+      cleanupFirebaseSync();
     }
 
     return () => {
       // Cleanup on unmount
       if (isFirebaseMode) {
-        firebaseStore.cleanupFirebaseSync();
+        cleanupFirebaseSync();
       } else if (isSharedMode) {
-        sharedStore.cleanupSharedCanvas();
+        cleanupSharedCanvas();
       }
     };
-  }, [isFirebaseMode, isSharedMode, user?.uid]);
+  }, [cleanupFirebaseSync, cleanupSharedCanvas, initializeFirebaseSync, isFirebaseMode, isSharedMode, loading, user, user?.uid, user?.isAnonymous]);
 
   return (
     <StoreContext.Provider value={{ isFirebaseMode, isSharedMode }}>

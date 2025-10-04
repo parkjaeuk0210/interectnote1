@@ -2,7 +2,6 @@ import {
   ref, 
   set, 
   onValue, 
-  off, 
   push, 
   remove, 
   update,
@@ -364,8 +363,8 @@ export const subscribeToSharedCanvas = (
   const unsubscribe = onValue(canvasRef, (snapshot: DataSnapshot) => {
     callback(snapshot.val());
   });
-  
-  return () => off(canvasRef, 'value', unsubscribe);
+
+  return unsubscribe;
 };
 
 // Subscribe to shared notes
@@ -378,8 +377,8 @@ export const subscribeToSharedNotes = (
     const data = snapshot.val() || {};
     callback(data);
   });
-  
-  return () => off(notesRef, 'value', unsubscribe);
+
+  return unsubscribe;
 };
 
 // Subscribe to shared images
@@ -392,8 +391,8 @@ export const subscribeToSharedImages = (
     const data = snapshot.val() || {};
     callback(data);
   });
-  
-  return () => off(imagesRef, 'value', unsubscribe);
+
+  return unsubscribe;
 };
 
 // Subscribe to shared files
@@ -406,8 +405,8 @@ export const subscribeToSharedFiles = (
     const data = snapshot.val() || {};
     callback(data);
   });
-  
-  return () => off(filesRef, 'value', unsubscribe);
+
+  return unsubscribe;
 };
 
 // Subscribe to presence updates
@@ -420,8 +419,8 @@ export const subscribeToPresence = (
     const data = snapshot.val() || {};
     callback(data);
   });
-  
-  return () => off(presenceRef, 'value', unsubscribe);
+
+  return unsubscribe;
 };
 
 // CRUD operations for shared canvas items
@@ -536,25 +535,31 @@ export const getUserSharedCanvases = async (userId: string): Promise<Array<{
   });
   
   const canvasesData = snapshot.val() || {};
-  const canvasList = [];
-  
-  // Get additional info for each canvas
-  for (const [canvasId, canvasInfo] of Object.entries(canvasesData)) {
-    const canvasRef = ref(database, getSharedCanvasPath(canvasId));
-    const canvasSnapshot = await new Promise<DataSnapshot>((resolve) => {
-      onValue(canvasRef, resolve, { onlyOnce: true });
-    });
-    
-    const canvasData = canvasSnapshot.val() as SharedCanvas;
-    if (canvasData) {
-      canvasList.push({
-        ...(canvasInfo as any),
-        participantCount: Object.keys(canvasData.participants || {}).length
+  const canvasEntries = Object.entries(canvasesData) as Array<[string, any]>;
+
+  const canvases = await Promise.all(
+    canvasEntries.map(async ([canvasId, canvasInfo]) => {
+      const canvasRef = ref(database, getSharedCanvasPath(canvasId));
+      const canvasSnapshot = await new Promise<DataSnapshot>((resolve) => {
+        onValue(canvasRef, resolve, { onlyOnce: true });
       });
-    }
-  }
-  
-  return canvasList.sort((a, b) => b.joinedAt - a.joinedAt);
+
+      const canvasData = canvasSnapshot.val() as SharedCanvas | null;
+      if (!canvasData) {
+        return null;
+      }
+
+      return {
+        canvasId,
+        ...(canvasInfo as any),
+        participantCount: Object.keys(canvasData.participants || {}).length,
+      };
+    })
+  );
+
+  return canvases
+    .filter((canvas): canvas is NonNullable<typeof canvas> => canvas !== null)
+    .sort((a, b) => b.joinedAt - a.joinedAt);
 };
 
 // Leave shared canvas
