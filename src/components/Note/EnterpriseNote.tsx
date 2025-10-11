@@ -182,6 +182,14 @@ export const EnterpriseNote = React.memo(({ note, isEditing = false, onStartEdit
     </Group>
   );
 }, (prevProps, nextProps) => {
+  // ✅ FIX: Compare timestamps instead of Date objects for proper memoization
+  const prevTime = prevProps.note.updatedAt instanceof Date
+    ? prevProps.note.updatedAt.getTime()
+    : prevProps.note.updatedAt;
+  const nextTime = nextProps.note.updatedAt instanceof Date
+    ? nextProps.note.updatedAt.getTime()
+    : nextProps.note.updatedAt;
+
   return (
     prevProps.note.id === nextProps.note.id &&
     prevProps.note.x === nextProps.note.x &&
@@ -190,7 +198,7 @@ export const EnterpriseNote = React.memo(({ note, isEditing = false, onStartEdit
     prevProps.note.height === nextProps.note.height &&
     prevProps.note.content === nextProps.note.content &&
     prevProps.note.color === nextProps.note.color &&
-    prevProps.note.updatedAt === nextProps.note.updatedAt &&
+    prevTime === nextTime &&
     prevProps.isEditing === nextProps.isEditing
   );
 });

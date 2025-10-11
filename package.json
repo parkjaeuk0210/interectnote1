@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "lint": "tsc --noEmit",
+    "build": "npx tsc && vite build",
+    "lint": "npx tsc --noEmit",
     "preview": "vite preview",
     "test": "jest",
     "test:watch": "jest --watch",

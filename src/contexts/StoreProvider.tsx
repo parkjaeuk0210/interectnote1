@@ -32,14 +32,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [sharedStore.canvasId]);
 
   useEffect(() => {
-    console.log('[StoreProvider] Auth state changed:', {
-      user: user?.uid,
-      isAnonymous: user?.isAnonymous,
-      loading,
-      isFirebaseMode,
-      isSharedMode
-    });
-    
     // Check for pending share token after login
     if (user && !loading) {
       const pendingToken = sessionStorage.getItem('pendingShareToken');
@@ -50,29 +42,27 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return;
       }
     }
-    
+
+    // ✅ FIX: Prevent duplicate Firebase sync initialization
     if (isSharedMode) {
-      console.log('[StoreProvider] Using shared mode');
       // Already in shared mode, no need to do anything
-    } else if (isFirebaseMode && user) {
-      console.log('[StoreProvider] Initializing Firebase mode for user:', user.uid);
-      // Initialize Firebase sync
+    } else if (isFirebaseMode && user && firebaseStore.currentUserId !== user.uid) {
+      // Only initialize if user changed
       firebaseStore.initializeFirebaseSync(user.uid);
-    } else {
-      console.log('[StoreProvider] Using local mode (no auth or anonymous)');
+    } else if (!isFirebaseMode && !isSharedMode) {
       // Cleanup Firebase sync when logged out
       firebaseStore.cleanupFirebaseSync();
     }
 
     return () => {
-      // Cleanup on unmount
+      // Cleanup on unmount only
       if (isFirebaseMode) {
         firebaseStore.cleanupFirebaseSync();
       } else if (isSharedMode) {
         sharedStore.cleanupSharedCanvas();
       }
     };
-  }, [isFirebaseMode, isSharedMode, user?.uid]);
+  }, [isFirebaseMode, isSharedMode, user?.uid, loading]);
 
   return (
     <StoreContext.Provider value={{ isFirebaseMode, isSharedMode }}>
@@ -95,18 +85,14 @@ type AppStore = CanvasStore | FirebaseCanvasStore | SharedCanvasStore;
 // Hook to get the appropriate store based on auth state
 export function useAppStore<T>(selector: (state: AppStore) => T): T {
   const { isFirebaseMode, isSharedMode } = useStoreMode();
-  
-  // Use the appropriate store based on mode
-  const localResult = useCanvasStore(selector as (state: CanvasStore) => T);
-  const firebaseResult = useFirebaseCanvasStore(selector as (state: FirebaseCanvasStore) => T);
-  const sharedResult = useSharedCanvasStore(selector as (state: SharedCanvasStore) => T);
-  
-  // Store selection without excessive logging in production
+
+  // ✅ FIX: Only subscribe to the appropriate store based on mode
+  // This prevents unnecessary subscriptions and re-renders
   if (isSharedMode) {
-    return sharedResult;
+    return useSharedCanvasStore(selector as (state: SharedCanvasStore) => T);
   } else if (isFirebaseMode) {
-    return firebaseResult;
+    return useFirebaseCanvasStore(selector as (state: FirebaseCanvasStore) => T);
   } else {
-    return localResult;
+    return useCanvasStore(selector as (state: CanvasStore) => T);
   }
 }

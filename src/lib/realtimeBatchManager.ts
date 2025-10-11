@@ -2,6 +2,8 @@ import { ref, update } from 'firebase/database';
 import { database } from './firebase';
 import { firebaseMetrics } from '../utils/firebaseMetrics';
 
+const DEBUG = import.meta.env.DEV;
+
 interface BatchUpdate {
   [path: string]: any;
 }
@@ -21,8 +23,14 @@ class RealtimeDatabaseBatchManager {
 
   // Add delete operation (set to null in multi-path update)
   addDelete(path: string) {
+    if (DEBUG) {
+      console.log('[BatchManager] addDelete called for path:', path);
+    }
     this.updates[path] = null;
     this.deletePaths.push(path);
+    if (DEBUG) {
+      console.log('[BatchManager] Current updates:', Object.keys(this.updates));
+    }
     this.scheduleBatch();
   }
 
@@ -47,30 +55,46 @@ class RealtimeDatabaseBatchManager {
   // Execute all pending operations
   private async executeBatch() {
     const updateCount = Object.keys(this.updates).length;
-    
+
     if (updateCount === 0) {
+      if (DEBUG) {
+        console.log('[BatchManager] No updates to execute');
+      }
       return;
     }
-    
+
     const currentUpdates = { ...this.updates };
     const currentDeletes = [...this.deletePaths];
     this.updates = {};
     this.deletePaths = [];
-    
+
+    if (DEBUG) {
+      console.log(`🔄 [BatchManager] Executing batch with ${updateCount} operations`);
+      console.log('[BatchManager] Updates to execute:', currentUpdates);
+      console.log('[BatchManager] Delete paths:', currentDeletes);
+    }
+
     try {
       // Realtime Database multi-path update
       const rootRef = ref(database);
+      if (DEBUG) {
+        console.log('[BatchManager] Calling Firebase update...');
+      }
       await update(rootRef, currentUpdates);
-      
+
       // Track metrics
       const writeCount = updateCount - currentDeletes.length;
       const deleteCount = currentDeletes.length;
-      
+
       for (let i = 0; i < writeCount; i++) {
         firebaseMetrics.incrementWrite();
       }
       for (let i = 0; i < deleteCount; i++) {
         firebaseMetrics.incrementDelete();
+      }
+
+      if (DEBUG) {
+        console.log(`✅ Batch committed: ${writeCount} writes, ${deleteCount} deletes`);
       }
     } catch (error) {
       console.error('Batch commit failed:', error);

@@ -95,9 +95,13 @@ export const updateNote = async (userId: string, noteId: string, updates: Partia
 
 export const deleteNote = async (userId: string, noteId: string) => {
   const path = `${getNotesPath(userId)}/${noteId}`;
-  console.log('[Database] deleteNote - adding delete to batch:', path);
+  if (import.meta.env.DEV) {
+    console.log('[Database] deleteNote - adding delete to batch:', path);
+  }
   realtimeBatchManager.addDelete(path);
-  console.log('[Database] Pending operations:', realtimeBatchManager.getPendingCount());
+  if (import.meta.env.DEV) {
+    console.log('[Database] Pending operations:', realtimeBatchManager.getPendingCount());
+  }
 };
 
 // Images operations

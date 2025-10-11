@@ -38,36 +38,18 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
   const [showShareModal, setShowShareModal] = useState(false);
   const { participants } = useSharedCanvasStore();
   
-  // Monitor storage usage
+  // ✅ FIX: Monitor storage usage only when dependencies change
+  // No need for setInterval since we already have dependencies tracking changes
   useEffect(() => {
-    const updateStorageUsage = () => {
-      setStorageUsage(getLocalStorageUsagePercent());
-    };
-    
-    updateStorageUsage();
-    
-    // Update whenever items change
-    const interval = setInterval(updateStorageUsage, 1000);
-    return () => clearInterval(interval);
+    setStorageUsage(getLocalStorageUsagePercent());
   }, [notes.length, images.length, files.length]);
 
   const handleDelete = () => {
-    console.log('[Toolbar] handleDelete called', {
-      selectedNoteId,
-      selectedImageId,
-      selectedFileId,
-      deleteNote,
-      isSharedMode
-    });
-    
     if (selectedNoteId) {
-      console.log('[Toolbar] Calling deleteNote for:', selectedNoteId);
       deleteNote(selectedNoteId);
     } else if (selectedImageId) {
-      console.log('[Toolbar] Calling deleteImage for:', selectedImageId);
       deleteImage(selectedImageId);
     } else if (selectedFileId) {
-      console.log('[Toolbar] Calling deleteFile for:', selectedFileId);
       deleteFile(selectedFileId);
     }
   };

@@ -241,18 +241,17 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
   },
 
   deleteNote: (id: string) => {
-    console.log('[FirebaseStore] deleteNote called for:', id);
     const userId = get().currentUserId || auth.currentUser?.uid || null;
-    console.log('[FirebaseStore] Current userId:', userId);
-    
+
     if (!userId) {
-      console.log('[FirebaseStore] No user, falling back to local delete');
+      if (import.meta.env.DEV) {
+        console.log('[FirebaseStore] No user, falling back to local delete');
+      }
       useCanvasStore.getState().deleteNote(id);
       return;
     }
 
     set({ isSyncing: true });
-    console.log('[FirebaseStore] Calling deleteNoteFromFirebase...');
     // Optimistically remove from local state
     set((s) => ({
       notes: s.notes.filter((n) => n.id !== id),
@@ -261,7 +260,6 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
 
     deleteNoteFromFirebase(userId, id)
       .then(() => {
-        console.log('[FirebaseStore] Delete successful, waiting for listener update');
         // The deletion will be reflected via the Firebase listener
       })
       .catch((error) => {

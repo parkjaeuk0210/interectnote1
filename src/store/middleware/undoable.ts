@@ -46,18 +46,19 @@ const undoableImpl: Undoable = (initializer, options = {}) => {
       }
 
       const prevState = get();
-      
+
       // Call the original set
       set(partial, replace);
-      
+
       const nextState = get();
-      
-      // Check if state changed in tracked properties
-      const hasTrackedChanges = 
-        JSON.stringify((prevState as any).notes) !== JSON.stringify((nextState as any).notes) ||
-        JSON.stringify((prevState as any).images) !== JSON.stringify((nextState as any).images) ||
-        JSON.stringify((prevState as any).files) !== JSON.stringify((nextState as any).files);
-      
+
+      // ✅ FIX: Use reference equality instead of JSON.stringify for performance
+      // Zustand ensures immutability, so reference comparison is sufficient
+      const hasTrackedChanges =
+        (prevState as any).notes !== (nextState as any).notes ||
+        (prevState as any).images !== (nextState as any).images ||
+        (prevState as any).files !== (nextState as any).files;
+
       // Only track if tracked properties changed
       const shouldTrack = hasTrackedChanges;
       
