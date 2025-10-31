@@ -213,8 +213,28 @@ export const joinSharedCanvas = async (
 
   // Check if user is already a participant
   const currentParticipants = canvasData.participants || {};
-  if (currentParticipants[userId]) {
-    // User is already in the canvas, just return the canvas ID
+  const existingParticipant = currentParticipants[userId];
+  if (existingParticipant) {
+    // Update role if token grants higher privileges than current assignment
+    if (existingParticipant.role !== tokenData.role) {
+      const participantRef = ref(database, `${getParticipantsPath(tokenData.canvasId)}/${userId}`);
+      await update(participantRef, {
+        role: tokenData.role,
+        lastActiveAt: Date.now(),
+      });
+
+      const userCanvasRef = ref(
+        database,
+        `${getUserSharedCanvasesPath(userId)}/${tokenData.canvasId}`
+      );
+      await update(userCanvasRef, {
+        role: tokenData.role,
+        joinedAt: existingParticipant.joinedAt ?? Date.now(),
+      });
+    }
+
+    // Ensure presence entry is refreshed for returning participant
+    await updatePresence(tokenData.canvasId, userId, { isOnline: true });
     return tokenData.canvasId;
   }
 
