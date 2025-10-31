@@ -288,10 +288,15 @@ export const joinSharedCanvas = async (
   // Track who has used the token (for analytics, not for blocking)
   // Don't mark as "used" to allow multiple users to join
   const usageRef = ref(database, `${getShareTokenPath(token)}/usage/${userId}`);
-  await set(usageRef, {
-    userId,
-    joinedAt: Date.now()
-  });
+  try {
+    await set(usageRef, {
+      userId,
+      joinedAt: Date.now()
+    });
+  } catch (error) {
+    // Non-owners can't update share token metadata; ignore so join proceeds.
+    console.warn('share token usage tracking failed', error);
+  }
 
   // Add canvas to user's shared canvas list
   const userCanvasesRef = ref(database, `${getUserSharedCanvasesPath(userId)}/${tokenData.canvasId}`);
