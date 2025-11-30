@@ -148,17 +148,22 @@ export const StickyNote = ({ note }: StickyNoteProps) => {
     textarea.focus();
     textarea.select();
 
-    const removeTextarea = () => {
-      textarea.parentNode?.removeChild(textarea);
-      window.removeEventListener('click', handleOutsideClick);
-      setIsEditing(false);
-    };
+    // ✅ FIX: Use flag to track if listener was added (prevent race condition)
+    let listenerAdded = false;
 
     const handleOutsideClick = (e: MouseEvent) => {
       if (e.target !== textarea) {
         updateNote(note.id, { content: textarea.value });
         removeTextarea();
       }
+    };
+
+    const removeTextarea = () => {
+      textarea.parentNode?.removeChild(textarea);
+      if (listenerAdded) {
+        window.removeEventListener('click', handleOutsideClick);
+      }
+      setIsEditing(false);
     };
 
     textarea.addEventListener('keydown', (e) => {
@@ -170,7 +175,9 @@ export const StickyNote = ({ note }: StickyNoteProps) => {
       }
     });
 
+    // ✅ FIX: Mark listener as added after setTimeout
     setTimeout(() => {
+      listenerAdded = true;
       window.addEventListener('click', handleOutsideClick);
     });
   };
