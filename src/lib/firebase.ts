@@ -66,28 +66,64 @@ if (hasFirebaseConfig) {
 export { auth, googleProvider, database, storage, app };
 
 // Enable offline persistence for Realtime Database with error handling
+// + 비활성 탭 연결 해제 최적화 (Firebase 연결 수 감소)
 if (typeof window !== 'undefined' && database) {
   import('firebase/database').then(({ goOffline, goOnline }) => {
+    let isTabActive = true;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
     // Handle online/offline state with error catching
     window.addEventListener('online', () => {
+      if (!isTabActive) return; // Don't reconnect if tab is inactive
       try {
         goOnline(database);
-        console.log('🌐 Firebase: Connection restored');
+        console.log('Firebase: Connection restored');
       } catch (error) {
-        console.warn('⚠️ Firebase: Failed to go online:', error);
+        console.warn('Firebase: Failed to go online:', error);
       }
     });
-    
+
     window.addEventListener('offline', () => {
       try {
         goOffline(database);
-        console.log('📴 Firebase: Working offline');
+        console.log('Firebase: Working offline');
       } catch (error) {
-        console.warn('⚠️ Firebase: Failed to go offline:', error);
+        console.warn('Firebase: Failed to go offline:', error);
+      }
+    });
+
+    // 비활성 탭 연결 해제 최적화
+    // 탭이 백그라운드로 가면 30초 후 연결 해제
+    // 다시 활성화되면 즉시 연결 복원
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // Tab became inactive - schedule disconnect after 30 seconds
+        isTabActive = false;
+        reconnectTimeout = setTimeout(() => {
+          try {
+            goOffline(database);
+            console.log('Firebase: Disconnected (inactive tab)');
+          } catch (error) {
+            console.warn('Firebase: Failed to disconnect:', error);
+          }
+        }, 30000); // 30 seconds delay before disconnecting
+      } else {
+        // Tab became active - reconnect immediately
+        isTabActive = true;
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+          reconnectTimeout = null;
+        }
+        try {
+          goOnline(database);
+          console.log('Firebase: Reconnected (active tab)');
+        } catch (error) {
+          console.warn('Firebase: Failed to reconnect:', error);
+        }
       }
     });
   }).catch(error => {
-    console.warn('⚠️ Firebase: Failed to setup offline handling:', error);
+    console.warn('Firebase: Failed to setup offline handling:', error);
   });
 }
 

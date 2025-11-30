@@ -11,10 +11,8 @@ import {
   updateFile as updateFileInFirebase,
   deleteFile as deleteFileFromFirebase,
   saveSettings,
-  subscribeToNotes,
-  subscribeToImages,
-  subscribeToFiles,
-  subscribeToSettings
+  subscribeToUserData,
+  UserData
 } from '../lib/database';
 import { Note, CanvasImage, CanvasFile, Viewport, NoteColor } from '../types';
 import { FirebaseNote, FirebaseImage, FirebaseFile } from '../types/firebase';
@@ -515,12 +513,10 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
     }
   },
 
-  // Firebase sync
+  // Firebase sync - 최적화: 4개 리스너 → 1개 통합 리스너 (75% 연결 감소)
   initializeFirebaseSync: (userId: string) => {
     // Clean up existing subscriptions
     get().cleanupFirebaseSync();
-
-    const unsubscribers: (() => void)[] = [];
 
     // Reset readiness flags
     set({ currentUserId: userId, notesReady: false, imagesReady: false, filesReady: false, settingsReady: false, remoteReady: false });
@@ -546,149 +542,85 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
           images: cachedImages,
           files: cachedFiles,
           ...(cachedDark !== undefined ? { isDarkMode: cachedDark } : {}),
-          // Don't set remoteReady to true here - let it be set when Firebase data arrives
         });
       }
     } catch (e) {
       console.warn('Failed to load remote cache:', e);
     }
 
-    // Subscribe to notes
-    unsubscribers.push(
-      subscribeToNotes(userId, (firebaseNotes) => {
-        const notes = Object.entries(firebaseNotes).map(([id, note]) => ({
-          ...firebaseNoteToLocal(note),
-          id,
-        }));
-        set((state) => {
-          const next = { ...state, notes, notesReady: true } as FirebaseCanvasStore;
-          try {
-            const cache = {
-              version: 1,
-              updatedAt: Date.now(),
-              notes: next.notes.map(n => ({ ...n, createdAt: n.createdAt.getTime(), updatedAt: n.updatedAt.getTime() })),
-              images: next.images.map(img => ({ ...img, createdAt: img.createdAt.getTime() })),
-              files: next.files.map(f => ({ ...f, createdAt: f.createdAt.getTime() })),
-              isDarkMode: next.isDarkMode,
-            };
-            localStorage.setItem(`remoteCache:${userId}`, JSON.stringify(cache));
-          } catch {}
-          const remoteReady = next.notesReady && next.imagesReady && next.filesReady && next.settingsReady;
-          return { ...next, remoteReady };
-        });
-      })
-    );
+    // 통합 구독: 1개의 리스너로 모든 데이터 수신 (연결 75% 감소)
+    const unsubscriber = subscribeToUserData(userId, (userData: UserData) => {
+      const { notes: firebaseNotes, images: firebaseImages, files: firebaseFiles, settings } = userData;
 
-    // Subscribe to images
-    unsubscribers.push(
-      subscribeToImages(userId, (firebaseImages) => {
-        // Only trigger migration once after initial load
-        const shouldMigrate = get().imagesReady === false;
-        
-        const images = Object.entries(firebaseImages).map(([id, image]) => ({
-          ...firebaseImageToLocal(image),
-          id,
-        }));
-        
-        // Trigger migration asynchronously without blocking UI
-        if (shouldMigrate && Object.keys(firebaseImages).length > 0) {
-          setTimeout(() => {
-            migrationManager.migrateImages(userId, firebaseImages).catch(err => {
-              console.error('Image migration error:', err);
-            });
-          }, 2000); // Delay migration to not interfere with initial load
-        }
-        
-        set((state) => {
-          const next = { ...state, images, imagesReady: true } as FirebaseCanvasStore;
-          try {
-            const cache = {
-              version: 1,
-              updatedAt: Date.now(),
-              notes: next.notes.map(n => ({ ...n, createdAt: n.createdAt.getTime(), updatedAt: n.updatedAt.getTime() })),
-              images: next.images.map(img => ({ ...img, createdAt: img.createdAt.getTime() })),
-              files: next.files.map(f => ({ ...f, createdAt: f.createdAt.getTime() })),
-              isDarkMode: next.isDarkMode,
-            };
-            localStorage.setItem(`remoteCache:${userId}`, JSON.stringify(cache));
-          } catch {}
-          const remoteReady = next.notesReady && next.imagesReady && next.filesReady && next.settingsReady;
-          return { ...next, remoteReady };
-        });
-      })
-    );
+      // Process notes
+      const notes = Object.entries(firebaseNotes).map(([id, note]) => ({
+        ...firebaseNoteToLocal(note),
+        id,
+      }));
 
-    // Subscribe to files
-    unsubscribers.push(
-      subscribeToFiles(userId, (firebaseFiles) => {
-        // Only trigger migration once after initial load
-        const shouldMigrate = get().filesReady === false;
-        
-        const files = Object.entries(firebaseFiles).map(([id, file]) => ({
-          ...firebaseFileToLocal(file),
-          id,
-        }));
-        
-        // Trigger migration asynchronously without blocking UI
-        if (shouldMigrate && Object.keys(firebaseFiles).length > 0) {
-          setTimeout(() => {
-            migrationManager.migrateFiles(userId, firebaseFiles).catch(err => {
-              console.error('File migration error:', err);
-            });
-          }, 2000); // Delay migration to not interfere with initial load
-        }
-        
-        set((state) => {
-          const next = { ...state, files, filesReady: true } as FirebaseCanvasStore;
-          try {
-            const cache = {
-              version: 1,
-              updatedAt: Date.now(),
-              notes: next.notes.map(n => ({ ...n, createdAt: n.createdAt.getTime(), updatedAt: n.updatedAt.getTime() })),
-              images: next.images.map(img => ({ ...img, createdAt: img.createdAt.getTime() })),
-              files: next.files.map(f => ({ ...f, createdAt: f.createdAt.getTime() })),
-              isDarkMode: next.isDarkMode,
-            };
-            localStorage.setItem(`remoteCache:${userId}`, JSON.stringify(cache));
-          } catch {}
-          const remoteReady = next.notesReady && next.imagesReady && next.filesReady && next.settingsReady;
-          return { ...next, remoteReady };
-        });
-      })
-    );
+      // Process images
+      const shouldMigrateImages = get().imagesReady === false;
+      const images = Object.entries(firebaseImages).map(([id, image]) => ({
+        ...firebaseImageToLocal(image),
+        id,
+      }));
 
-    // Subscribe to settings
-    unsubscribers.push(
-      subscribeToSettings(userId, (settings) => {
-        if (settings.isDarkMode !== undefined) {
-          set((state) => {
-            const next = { ...state, isDarkMode: settings.isDarkMode, settingsReady: true } as FirebaseCanvasStore;
-            try {
-              const cache = {
-                version: 1,
-                updatedAt: Date.now(),
-                notes: next.notes.map(n => ({ ...n, createdAt: n.createdAt.getTime(), updatedAt: n.updatedAt.getTime() })),
-                images: next.images.map(img => ({ ...img, createdAt: img.createdAt.getTime() })),
-                files: next.files.map(f => ({ ...f, createdAt: f.createdAt.getTime() })),
-                isDarkMode: next.isDarkMode,
-              };
-              localStorage.setItem(`remoteCache:${userId}`, JSON.stringify(cache));
-            } catch {}
-            const remoteReady = next.notesReady && next.imagesReady && next.filesReady && next.settingsReady;
-            return { ...next, remoteReady };
+      if (shouldMigrateImages && Object.keys(firebaseImages).length > 0) {
+        setTimeout(() => {
+          migrationManager.migrateImages(userId, firebaseImages).catch(err => {
+            console.error('Image migration error:', err);
           });
-        } else {
-          // Even without specific settings, mark settings as ready
-          set((state) => {
-            const next = { ...state, settingsReady: true } as FirebaseCanvasStore;
-            const remoteReady = next.notesReady && next.imagesReady && next.filesReady && next.settingsReady;
-            return { ...next, remoteReady };
-          });
-        }
-      })
-    );
+        }, 2000);
+      }
 
-    set({ unsubscribers });
+      // Process files
+      const shouldMigrateFiles = get().filesReady === false;
+      const files = Object.entries(firebaseFiles).map(([id, file]) => ({
+        ...firebaseFileToLocal(file),
+        id,
+      }));
+
+      if (shouldMigrateFiles && Object.keys(firebaseFiles).length > 0) {
+        setTimeout(() => {
+          migrationManager.migrateFiles(userId, firebaseFiles).catch(err => {
+            console.error('File migration error:', err);
+          });
+        }, 2000);
+      }
+
+      // Update state
+      set((state) => {
+        const next = {
+          ...state,
+          notes,
+          images,
+          files,
+          notesReady: true,
+          imagesReady: true,
+          filesReady: true,
+          settingsReady: true,
+          remoteReady: true,
+          ...(settings?.isDarkMode !== undefined ? { isDarkMode: settings.isDarkMode } : {}),
+        } as FirebaseCanvasStore;
+
+        // Update cache
+        try {
+          const cache = {
+            version: 1,
+            updatedAt: Date.now(),
+            notes: next.notes.map(n => ({ ...n, createdAt: n.createdAt.getTime(), updatedAt: n.updatedAt.getTime() })),
+            images: next.images.map(img => ({ ...img, createdAt: img.createdAt.getTime() })),
+            files: next.files.map(f => ({ ...f, createdAt: f.createdAt.getTime() })),
+            isDarkMode: next.isDarkMode,
+          };
+          localStorage.setItem(`remoteCache:${userId}`, JSON.stringify(cache));
+        } catch {}
+
+        return next;
+      });
+    });
+
+    set({ unsubscribers: [unsubscriber] });
   },
 
   cleanupFirebaseSync: () => {

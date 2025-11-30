@@ -303,3 +303,32 @@ export const subscribeToSettings = (
   // onValue returns an unsubscribe function directly in Firebase v9
   return unsubscribe;
 };
+// ============================================
+// 통합 구독 (Firebase 연결 수 최적화)
+// 4개 리스너 → 1개 리스너로 75% 연결 감소
+// ============================================
+
+export interface UserData {
+  notes: Record<string, FirebaseNote>;
+  images: Record<string, FirebaseImage>;
+  files: Record<string, FirebaseFile>;
+  settings: any;
+}
+
+export const subscribeToUserData = (
+  userId: string,
+  callback: (data: UserData) => void
+) => {
+  const userRef = ref(database, getUserPath(userId));
+  const unsubscribe = onValue(userRef, (snapshot: DataSnapshot) => {
+    const data = snapshot.val() || {};
+    callback({
+      notes: data.notes || {},
+      images: data.images || {},
+      files: data.files || {},
+      settings: data.settings || {},
+    });
+  });
+
+  return unsubscribe;
+};
