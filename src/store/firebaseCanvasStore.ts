@@ -300,11 +300,13 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
           selectedFileId: null
         });
         
-        // Then update Firebase
-        updateNoteInFirebase(userId, id, { zIndex: maxZIndex + 1 })
-          .catch((error) => {
-            console.error('Failed to update note zIndex:', error);
-          });
+        // FIX: Debounce z-index Firebase update to reduce drag start delay
+        if ((globalThis as any).__zIndexTimer) {
+          clearTimeout((globalThis as any).__zIndexTimer);
+        }
+        (globalThis as any).__zIndexTimer = setTimeout(() => {
+          updateNoteInFirebase(userId, id, { zIndex: maxZIndex + 1 }).catch(() => {});
+        }, 1000);
       }
     } else {
       set({ selectedNoteId: id, selectedImageId: null, selectedFileId: null });

@@ -59,8 +59,32 @@ const undoableImpl: Undoable = (initializer, options = {}) => {
         (prevState as any).images !== (nextState as any).images ||
         (prevState as any).files !== (nextState as any).files;
 
-      // Only track if tracked properties changed
-      const shouldTrack = hasTrackedChanges;
+      // ✅ FIX: Skip history for position-only updates (drag operations)
+      // This prevents deepClone on every drag move, improving performance significantly
+      const isPositionOnlyChange = () => {
+        const prevNotes = (prevState as any).notes || [];
+        const nextNotes = (nextState as any).notes || [];
+        if (prevNotes.length !== nextNotes.length) return false;
+        
+        for (let i = 0; i < prevNotes.length; i++) {
+          const prev = prevNotes[i];
+          const next = nextNotes[i];
+          if (prev.id !== next.id) return false;
+          // If only x, y changed -> position-only
+          const xChanged = prev.x !== next.x;
+          const yChanged = prev.y !== next.y;
+          const otherChanged = prev.content !== next.content ||
+                               prev.width !== next.width ||
+                               prev.height !== next.height ||
+                               prev.color !== next.color;
+          if (otherChanged) return false;
+          if (xChanged || yChanged) continue;
+        }
+        return true;
+      };
+
+      // Only track if tracked properties changed AND not position-only
+      const shouldTrack = hasTrackedChanges && !isPositionOnlyChange();
       
       if (shouldTrack && !isStateEqual(prevState, nextState)) {
         // Only save the parts we care about for undo/redo
