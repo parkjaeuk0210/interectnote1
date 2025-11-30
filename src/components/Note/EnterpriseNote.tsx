@@ -198,7 +198,6 @@ export const EnterpriseNote = React.memo(({ note, isEditing = false, onStartEdit
     prevProps.note.height === nextProps.note.height &&
     prevProps.note.content === nextProps.note.content &&
     prevProps.note.color === nextProps.note.color &&
-    prevProps.note.zIndex === nextProps.note.zIndex &&
     prevTime === nextTime &&
     prevProps.isEditing === nextProps.isEditing
   );
