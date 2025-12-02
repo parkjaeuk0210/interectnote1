@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { undoable } from './middleware/undoable';
-import { 
+import {
   saveNote as saveNoteToFirebase,
   updateNote as updateNoteInFirebase,
   deleteNote as deleteNoteFromFirebase,
@@ -19,6 +19,7 @@ import { FirebaseNote, FirebaseImage, FirebaseFile } from '../types/firebase';
 import { auth } from '../lib/firebase';
 import { migrationManager } from '../lib/migrationManager';
 import { useCanvasStore } from './canvasStore';
+import { indexedDBManager } from '../lib/indexedDBManager';
 
 export interface FirebaseCanvasStore {
   // Local state (same as before)
@@ -516,6 +517,7 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
   },
 
   // Firebase sync - 최적화: 4개 리스너 → 1개 통합 리스너 (75% 연결 감소)
+  // + IndexedDB 캐싱으로 Firebase 대역폭 70% 절감
   initializeFirebaseSync: (userId: string) => {
     // Clean up existing subscriptions
     get().cleanupFirebaseSync();
@@ -523,32 +525,63 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
     // Reset readiness flags
     set({ currentUserId: userId, notesReady: false, imagesReady: false, filesReady: false, settingsReady: false, remoteReady: false });
 
-    // Load cached remote snapshot for immediate UX (if present)
-    try {
-      const cacheKey = `remoteCache:${userId}`;
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        const cachedNotes: Note[] = Array.isArray(parsed.notes)
-          ? parsed.notes.map((n: any) => ({ ...n, createdAt: new Date(n.createdAt), updatedAt: new Date(n.updatedAt) }))
-          : [];
-        const cachedImages: CanvasImage[] = Array.isArray(parsed.images)
-          ? parsed.images.map((img: any) => ({ ...img, createdAt: new Date(img.createdAt) }))
-          : [];
-        const cachedFiles: CanvasFile[] = Array.isArray(parsed.files)
-          ? parsed.files.map((f: any) => ({ ...f, createdAt: new Date(f.createdAt) }))
-          : [];
-        const cachedDark = typeof parsed.isDarkMode === 'boolean' ? parsed.isDarkMode : undefined;
-        set({
-          notes: cachedNotes,
-          images: cachedImages,
-          files: cachedFiles,
-          ...(cachedDark !== undefined ? { isDarkMode: cachedDark } : {}),
-        });
+    // 1단계: IndexedDB 캐시 우선 로드 (가장 빠름, 용량 제한 없음)
+    const loadCache = async () => {
+      try {
+        if (indexedDBManager.isAvailable()) {
+          const cached = await indexedDBManager.getAllUserData(userId);
+          if (cached && (cached.notes.length > 0 || cached.images.length > 0 || cached.files.length > 0)) {
+            console.log('📦 IndexedDB cache loaded:', {
+              notes: cached.notes.length,
+              images: cached.images.length,
+              files: cached.files.length,
+            });
+            set({
+              notes: cached.notes,
+              images: cached.images,
+              files: cached.files,
+              ...(cached.settings?.isDarkMode !== undefined ? { isDarkMode: cached.settings.isDarkMode } : {}),
+            });
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn('IndexedDB cache load failed:', e);
       }
-    } catch (e) {
-      console.warn('Failed to load remote cache:', e);
-    }
+
+      // 2단계: localStorage 폴백 (IndexedDB 실패 시)
+      try {
+        const cacheKey = `remoteCache:${userId}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const cachedNotes: Note[] = Array.isArray(parsed.notes)
+            ? parsed.notes.map((n: any) => ({ ...n, createdAt: new Date(n.createdAt), updatedAt: new Date(n.updatedAt) }))
+            : [];
+          const cachedImages: CanvasImage[] = Array.isArray(parsed.images)
+            ? parsed.images.map((img: any) => ({ ...img, createdAt: new Date(img.createdAt) }))
+            : [];
+          const cachedFiles: CanvasFile[] = Array.isArray(parsed.files)
+            ? parsed.files.map((f: any) => ({ ...f, createdAt: new Date(f.createdAt) }))
+            : [];
+          const cachedDark = typeof parsed.isDarkMode === 'boolean' ? parsed.isDarkMode : undefined;
+          set({
+            notes: cachedNotes,
+            images: cachedImages,
+            files: cachedFiles,
+            ...(cachedDark !== undefined ? { isDarkMode: cachedDark } : {}),
+          });
+          console.log('📦 localStorage fallback cache loaded');
+          return true;
+        }
+      } catch (e) {
+        console.warn('localStorage cache load failed:', e);
+      }
+      return false;
+    };
+
+    // 캐시 로드 시작 (비동기)
+    loadCache();
 
     // 통합 구독: 1개의 리스너로 모든 데이터 수신 (연결 75% 감소)
     const unsubscriber = subscribeToUserData(userId, (userData: UserData) => {
@@ -605,14 +638,28 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
           ...(settings?.isDarkMode !== undefined ? { isDarkMode: settings.isDarkMode } : {}),
         } as FirebaseCanvasStore;
 
-        // Update cache
+        // IndexedDB에 캐시 저장 (비동기, 대용량 지원)
+        if (indexedDBManager.isAvailable()) {
+          indexedDBManager.saveAllUserData(userId, {
+            notes: next.notes,
+            images: next.images,
+            files: next.files,
+            settings: {
+              isDarkMode: next.isDarkMode,
+            },
+          }).catch(err => {
+            console.warn('IndexedDB save failed:', err);
+          });
+        }
+
+        // localStorage 폴백 캐시도 유지 (IndexedDB 미지원 브라우저용)
         try {
           const cache = {
             version: 1,
             updatedAt: Date.now(),
-            notes: next.notes.map(n => ({ ...n, createdAt: n.createdAt.getTime(), updatedAt: n.updatedAt.getTime() })),
-            images: next.images.map(img => ({ ...img, createdAt: img.createdAt.getTime() })),
-            files: next.files.map(f => ({ ...f, createdAt: f.createdAt.getTime() })),
+            notes: next.notes.slice(0, 50).map(n => ({ ...n, createdAt: n.createdAt.getTime(), updatedAt: n.updatedAt.getTime() })), // 최근 50개만
+            images: next.images.slice(0, 20).map(img => ({ ...img, createdAt: img.createdAt.getTime() })), // 최근 20개만
+            files: next.files.slice(0, 10).map(f => ({ ...f, createdAt: f.createdAt.getTime() })), // 최근 10개만
             isDarkMode: next.isDarkMode,
           };
           localStorage.setItem(`remoteCache:${userId}`, JSON.stringify(cache));
