@@ -26,9 +26,15 @@ dist-ssr
 
 # Environment variables
 .env
+.env.*
+!.env.example
 .env.local
 .env.production
+.env.vercel
 
 # Local documentation
 DEPLOYMENT_GUIDE.md
 .env*.local
+
+# Firebase emulator / local auth dumps
+auth-config.json

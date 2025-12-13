@@ -13,14 +13,19 @@ import { CollaboratorsList } from './components/Sharing/CollaboratorsList';
 import { CanvasList } from './components/Canvas/CanvasList';
 import { useAuth } from './contexts/AuthContext';
 import { useAppStore, useStoreMode } from './contexts/StoreProvider';
+import { useCanvasStore } from './store/canvasStore';
+import { useFirebaseCanvasStore } from './store/firebaseCanvasStore';
 import { useSharedCanvasStore } from './store/sharedCanvasStore';
 import { useHistoryStore } from './store/historyStore';
+import { compressImage, formatBytes, getDataUrlSize } from './utils/imageCompression';
+import { isLocalStorageNearLimit } from './utils/storageUtils';
+import { toast } from './utils/toast';
 import './styles/glassmorphism.css';
 import './styles/dark-mode.css';
 
 function App() {
   const { user } = useAuth();
-  const { isSharedMode } = useStoreMode();
+  const { isSharedMode, isFirebaseMode } = useStoreMode();
   const { canvasInfo } = useSharedCanvasStore();
   const { loading } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -58,6 +63,114 @@ function App() {
       sharedStore.initializeSharedCanvas(canvasId);
     }
   }, [user]);
+
+  // Paste image (e.g., macOS Cmd+4 screenshot) directly onto the canvas
+  useEffect(() => {
+    const isTextInput = (el: unknown): boolean => {
+      const node = el as HTMLElement | null;
+      if (!node) return false;
+      if (node.tagName === 'INPUT' || node.tagName === 'TEXTAREA') return true;
+      return node.isContentEditable === true;
+    };
+
+    const readAsDataUrl = (blob: Blob): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Failed to read image from clipboard'));
+        reader.readAsDataURL(blob);
+      });
+
+    const getImageDimensions = (dataUrl: string): Promise<{ width: number; height: number }> =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve({ width: img.width, height: img.height });
+        img.onerror = () => reject(new Error('Failed to load pasted image'));
+        img.src = dataUrl;
+      });
+
+    const getActiveStore = () => {
+      if (isSharedMode) return useSharedCanvasStore;
+      if (isFirebaseMode) return useFirebaseCanvasStore;
+      return useCanvasStore;
+    };
+
+    const handlePaste = (e: ClipboardEvent) => {
+      if (!e.clipboardData) return;
+
+      if (isTextInput(e.target) || isTextInput(document.activeElement)) {
+        return;
+      }
+
+      const imageItem = Array.from(e.clipboardData.items).find(
+        (item) => item.kind === 'file' && item.type.startsWith('image/')
+      );
+      if (!imageItem) return;
+
+      const file = imageItem.getAsFile();
+      if (!file) return;
+
+      e.preventDefault();
+
+      (async () => {
+        try {
+          if (isLocalStorageNearLimit()) {
+            toast.error('저장 공간이 부족합니다. 일부 항목을 삭제한 후 다시 시도해주세요.');
+            return;
+          }
+
+          const originalDataUrl = await readAsDataUrl(file);
+          const compressedUrl = await compressImage(originalDataUrl);
+          const compressedSize = getDataUrlSize(compressedUrl);
+
+          if (compressedSize > 3 * 1024 * 1024) {
+            toast.warning(
+              `스크린샷 크기가 너무 큽니다 (${formatBytes(compressedSize)}). 더 작은 영역을 캡처해주세요.`
+            );
+            return;
+          }
+
+          const { width: originalWidth, height: originalHeight } =
+            await getImageDimensions(originalDataUrl);
+
+          const maxSize = 400;
+          let width = originalWidth;
+          let height = originalHeight;
+          if (width > maxSize || height > maxSize) {
+            const ratio = Math.min(maxSize / width, maxSize / height);
+            width *= ratio;
+            height *= ratio;
+          }
+
+          const store = getActiveStore();
+          const { viewport, addImage } = store.getState() as any;
+
+          const centerX = (window.innerWidth / 2 - viewport.x) / viewport.scale;
+          const centerY = (window.innerHeight / 2 - viewport.y) / viewport.scale;
+
+          addImage({
+            x: centerX - width / 2,
+            y: centerY - height / 2,
+            width,
+            height,
+            url: compressedUrl,
+            originalWidth,
+            originalHeight,
+            fileName: file.name?.trim() || `screenshot-${Date.now()}.png`,
+            fileSize: compressedSize,
+          });
+
+          toast.success('스크린샷을 캔버스에 추가했습니다.');
+        } catch (error) {
+          console.error('Failed to paste image:', error);
+          toast.error('스크린샷을 붙여넣는 중 오류가 발생했습니다.');
+        }
+      })();
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [isFirebaseMode, isSharedMode]);
 
   // Keyboard shortcuts for undo/redo and delete
   useEffect(() => {

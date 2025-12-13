@@ -28,7 +28,6 @@
     "jest": "^30.0.4",
     "jest-environment-jsdom": "^30.0.4",
     "postcss": "^8.5.6",
-    "sharp-cli": "^5.2.0",
     "terser": "^5.44.0",
     "ts-jest": "^29.4.0",
     "typescript": "^5.8.3",

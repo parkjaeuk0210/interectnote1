@@ -2,22 +2,22 @@
   "rules": {
     "users": {
       "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid",
+        ".read": "auth != null && $uid === auth.uid",
+        ".write": "auth != null && $uid === auth.uid",
         "shared_canvases": {
           "$canvasId": {
-            ".write": "$uid === auth.uid"
+            ".write": "auth != null && $uid === auth.uid"
           }
         }
       }
     },
     "shared_canvases": {
       "$canvasId": {
-        ".read": "((data.child('isPublic').val() === true || data.child('shareSettings').child('allowPublicAccess').val() === true) && auth != null) || (auth != null && (data.child('owner').val() === auth.uid || data.child('participants').child(auth.uid).exists()))",
-        ".write": "!data.exists() && auth != null || data.child('isPublic').val() === true || (auth != null && (data.child('owner').val() === auth.uid || (data.child('participants').child(auth.uid).child('role').val() === 'editor')))",
+        ".read": "auth != null && (data.child('owner').val() === auth.uid || data.child('participants').child(auth.uid).exists() || data.child('shareSettings').child('allowPublicAccess').val() === true)",
+        ".write": "(auth != null) && ((!data.exists() && newData.child('owner').val() === auth.uid) || (data.exists() && data.child('owner').val() === auth.uid))",
         "participants": {
           "$participantId": {
-            ".write": "auth != null && (root.child('shared_canvases').child($canvasId).child('owner').val() === auth.uid || $participantId === auth.uid)"
+            ".write": "auth != null && (root.child('shared_canvases').child($canvasId).child('owner').val() === auth.uid || ($participantId === auth.uid && (!data.exists() || newData.child('role').val() === data.child('role').val())))"
           }
         },
         "notes": {
@@ -47,8 +47,8 @@
     },
     "share_tokens": {
       "$token": {
-        ".read": true,
-        ".write": "!data.exists() || (auth != null && data.child('createdBy').val() === auth.uid)",
+        ".read": "auth != null",
+        ".write": "(auth != null) && ((!data.exists() && newData.child('createdBy').val() === auth.uid) || (data.exists() && data.child('createdBy').val() === auth.uid))",
         ".validate": "newData.hasChildren(['canvasId','createdBy','createdAt','role']) && (newData.child('role').val() === 'viewer' || newData.child('role').val() === 'editor')"
       }
     }

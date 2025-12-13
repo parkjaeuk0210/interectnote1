@@ -163,7 +163,6 @@ export const generateShareLink = async (
   // Ensure canvas is accessible to invited collaborators
   const canvasRef = ref(database, getSharedCanvasPath(canvasId));
   await update(canvasRef, {
-    isPublic: true,
     'shareSettings/allowPublicAccess': true,
   });
 
