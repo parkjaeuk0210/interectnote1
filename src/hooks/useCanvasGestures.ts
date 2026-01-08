@@ -18,6 +18,7 @@ interface UseCanvasGesturesProps {
   isAnyNoteResizing: boolean;
   isAnyNoteDragging: boolean;
   isInDrawingMode?: boolean; // PDF 그리기 모드
+  enabled?: boolean; // 앱 비활성/유휴 시 제스처 처리 중단
 }
 
 export const useCanvasGestures = ({
@@ -29,10 +30,21 @@ export const useCanvasGestures = ({
   isAnyNoteResizing,
   isAnyNoteDragging,
   isInDrawingMode = false,
+  enabled = true,
 }: UseCanvasGesturesProps) => {
   const [isCanvasDragging, setIsCanvasDragging] = useState(false);
   const [isPinching, setIsPinching] = useState(false);
   const isMobileDevice = isMobile();
+
+  const hasDraggableAncestor = (node: Konva.Node | null): boolean => {
+    let current: Konva.Node | null = node;
+    while (current) {
+      // If any ancestor is draggable, Konva will treat it as an object drag target.
+      if (current.draggable()) return true;
+      current = current.getParent();
+    }
+    return false;
+  };
   
   // Store initial pinch state
   const pinchStartRef = useRef<{ 
@@ -44,6 +56,7 @@ export const useCanvasGestures = ({
   useGesture(
     {
       onWheel: ({ event, delta: [dx, dy], ctrlKey, metaKey, shiftKey }) => {
+        if (!enabled) return;
         if (isMobileDevice) return;
         
         event.preventDefault();
@@ -90,6 +103,7 @@ export const useCanvasGestures = ({
       },
       
       onDragStart: ({ event, touches }) => {
+        if (!enabled) return;
         if (isAnyNoteResizing || isAnyNoteDragging || isInDrawingMode) return;
         
         // Don't start drag if it's a multi-touch (pinch gesture)
@@ -102,7 +116,9 @@ export const useCanvasGestures = ({
             const pos = stage.getPointerPosition();
             if (pos) {
               const shape = stage.getIntersection(pos);
-              if (!shape) {
+              // ✅ Freeform-like behavior: if the shape under pointer is NOT draggable
+              // (e.g. not selected), treat it like empty space so canvas panning works.
+              if (!shape || !hasDraggableAncestor(shape)) {
                 setIsCanvasDragging(true);
               }
             }
@@ -111,6 +127,7 @@ export const useCanvasGestures = ({
       },
       
       onDrag: ({ delta: [dx, dy], pinching, event, touches }) => {
+        if (!enabled) return;
         // Don't handle drag if pinching, multi-touch, or in drawing mode
         if (pinching || !isCanvasDragging || isAnyNoteResizing || isAnyNoteDragging || isInDrawingMode) return;
         if (touches && touches > 1) return;
@@ -129,10 +146,12 @@ export const useCanvasGestures = ({
       },
       
       onDragEnd: () => {
+        if (!enabled) return;
         setIsCanvasDragging(false);
       },
       
       onPinchStart: ({ origin: [cx, cy], offset: [distance] }) => {
+        if (!enabled) return;
         setIsPinching(true);
         setIsCanvasDragging(false);
         
@@ -145,6 +164,7 @@ export const useCanvasGestures = ({
       },
       
       onPinch: ({ offset: [distance], origin: [cx, cy] }) => {
+        if (!enabled) return;
         if (!pinchStartRef.current) {
           // Initialize if not set
           pinchStartRef.current = {
@@ -176,6 +196,7 @@ export const useCanvasGestures = ({
       },
       
       onPinchEnd: () => {
+        if (!enabled) return;
         setIsPinching(false);
         pinchStartRef.current = null;
       },
@@ -185,7 +206,7 @@ export const useCanvasGestures = ({
       drag: { 
         filterTaps: true,
         from: () => [viewport.x, viewport.y],
-        enabled: !isAnyNoteResizing && !isAnyNoteDragging && !isPinching && !isInDrawingMode,
+        enabled: enabled && !isAnyNoteResizing && !isAnyNoteDragging && !isPinching && !isInDrawingMode,
         threshold: isMobileDevice ? 10 : 5,
         pointer: { 
           touch: true, 
@@ -193,12 +214,13 @@ export const useCanvasGestures = ({
         },
       },
       pinch: { 
-        enabled: true,
+        enabled: enabled,
         from: () => [100, 0], // Start with a base value
         threshold: 0, // No threshold for immediate response
         rubberband: false,
       },
       wheel: {
+        enabled: enabled,
         preventDefault: true,
       },
       eventOptions: {

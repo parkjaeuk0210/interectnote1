@@ -25,6 +25,7 @@ export const EditingIndicator: React.FC<EditingIndicatorProps> = ({
       fill="transparent"
       dash={[5, 5]}
       shadowEnabled={false}
+      listening={false}
     />
   );
 };

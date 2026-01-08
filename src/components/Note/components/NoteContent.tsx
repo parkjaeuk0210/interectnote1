@@ -53,6 +53,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({
       fill={isDarkMode ? "rgba(255, 255, 255, 0.9)" : "rgba(0, 0, 0, 0.85)"}
       wrap="word"
       lineHeight={LINE_HEIGHT}
+      listening={false}
     />
   );
 };

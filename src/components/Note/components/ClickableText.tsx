@@ -108,6 +108,7 @@ export const ClickableText: React.FC<ClickableTextProps> = ({
                   fontFamily={fontFamily}
                   fill={isUrl ? (isHovered ? linkHoverColor : linkColor) : textColor}
                   textDecoration={isUrl ? 'underline' : undefined}
+                  listening={isUrl}
                   onClick={isUrl && segment.url ? (e) => {
                     e.cancelBubble = true;
                     handleLinkClick(segment.url!, e);
@@ -172,6 +173,7 @@ export const ClickableText: React.FC<ClickableTextProps> = ({
             fontFamily={fontFamily}
             fill={isUrl ? (isHovered ? linkHoverColor : linkColor) : textColor}
             textDecoration={isUrl ? 'underline' : undefined}
+            listening={isUrl}
             onClick={isUrl && segment.url ? (e) => {
               e.cancelBubble = true;
               handleLinkClick(segment.url!, e);
@@ -236,6 +238,7 @@ export const ClickableText: React.FC<ClickableTextProps> = ({
             stroke="red"
             strokeWidth={2}
             fill="transparent"
+            listening={false}
           />
           <Text
             x={x + 2}
@@ -243,6 +246,7 @@ export const ClickableText: React.FC<ClickableTextProps> = ({
             text={`${width}x${height}`}
             fontSize={10}
             fill="red"
+            listening={false}
           />
         </>
       )}

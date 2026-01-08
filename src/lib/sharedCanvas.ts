@@ -48,6 +48,40 @@ const getParticipantsPath = (canvasId: string) => `${getSharedCanvasPath(canvasI
 const getPresencePath = (canvasId: string) => `${getSharedCanvasPath(canvasId)}/presence`;
 const getShareTokenPath = (token: string) => `share_tokens/${token}`;
 
+const presenceSessionUnsubscribers = new Map<string, () => void>();
+
+const ensurePresenceSession = (canvasId: string, userId: string) => {
+  if (!database) return;
+  const key = `${canvasId}:${userId}`;
+  if (presenceSessionUnsubscribers.has(key)) return;
+
+  const presenceRef = ref(database, `${getPresencePath(canvasId)}/${userId}`);
+  const connectedRef = ref(database, '.info/connected');
+
+  const unsubscribe = onValue(connectedRef, (snapshot) => {
+    if (snapshot.val() !== true) return;
+
+    // Re-register on reconnect; Firebase clears onDisconnect after it fires.
+    onDisconnect(presenceRef).update({
+      isOnline: false,
+      lastActiveAt: serverTimestamp(),
+    });
+
+    // Best-effort: mark as online when connection becomes available.
+    update(presenceRef, { isOnline: true, lastActiveAt: serverTimestamp() }).catch(() => {});
+  });
+
+  presenceSessionUnsubscribers.set(key, unsubscribe);
+};
+
+export const cleanupPresenceSession = (canvasId: string, userId: string) => {
+  const key = `${canvasId}:${userId}`;
+  const unsubscribe = presenceSessionUnsubscribers.get(key);
+  if (!unsubscribe) return;
+  unsubscribe();
+  presenceSessionUnsubscribers.delete(key);
+};
+
 // Create a new shared canvas
 export const createSharedCanvas = async (
   userId: string, 
@@ -313,16 +347,14 @@ export const updatePresence = async (
   userId: string,
   presenceData: Partial<PresenceData>
 ) => {
+  if (!database) return;
+  ensurePresenceSession(canvasId, userId);
+
   const presenceRef = ref(database, `${getPresencePath(canvasId)}/${userId}`);
   
   await update(presenceRef, {
     ...presenceData,
-    lastActiveAt: serverTimestamp()
-  });
-
-  // Set up onDisconnect to mark user as offline
-  onDisconnect(presenceRef).update({
-    isOnline: false,
+    ...(presenceData.isOnline === undefined ? { isOnline: true } : {}),
     lastActiveAt: serverTimestamp()
   });
 };

@@ -71,6 +71,36 @@ if (typeof window !== 'undefined' && database) {
   import('firebase/database').then(({ goOffline, goOnline }) => {
     let isTabActive = true;
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    const DISCONNECT_DELAY_MS = 10_000;
+
+    const scheduleDisconnect = (reason: string) => {
+      isTabActive = false;
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      reconnectTimeout = setTimeout(() => {
+        try {
+          goOffline(database);
+          console.log(`Firebase: Disconnected (${reason})`);
+        } catch (error) {
+          console.warn('Firebase: Failed to disconnect:', error);
+        }
+      }, DISCONNECT_DELAY_MS);
+    };
+
+    const reconnectNow = (reason: string) => {
+      isTabActive = true;
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+      try {
+        goOnline(database);
+        console.log(`Firebase: Reconnected (${reason})`);
+      } catch (error) {
+        console.warn('Firebase: Failed to reconnect:', error);
+      }
+    };
 
     // Handle online/offline state with error catching
     window.addEventListener('online', () => {
@@ -93,34 +123,25 @@ if (typeof window !== 'undefined' && database) {
     });
 
     // 비활성 탭 연결 해제 최적화
-    // 탭이 백그라운드로 가면 30초 후 연결 해제
+    // 탭/창이 비활성화되면 짧은 지연 후 연결 해제 (배터리/연결 수 감소)
     // 다시 활성화되면 즉시 연결 복원
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        // Tab became inactive - schedule disconnect after 30 seconds
-        isTabActive = false;
-        reconnectTimeout = setTimeout(() => {
-          try {
-            goOffline(database);
-            console.log('Firebase: Disconnected (inactive tab)');
-          } catch (error) {
-            console.warn('Firebase: Failed to disconnect:', error);
-          }
-        }, 30000); // 30 seconds delay before disconnecting
+        // Tab became inactive - schedule disconnect after delay
+        scheduleDisconnect('inactive tab');
       } else {
-        // Tab became active - reconnect immediately
-        isTabActive = true;
-        if (reconnectTimeout) {
-          clearTimeout(reconnectTimeout);
-          reconnectTimeout = null;
-        }
-        try {
-          goOnline(database);
-          console.log('Firebase: Reconnected (active tab)');
-        } catch (error) {
-          console.warn('Firebase: Failed to reconnect:', error);
-        }
+        reconnectNow('active tab');
       }
+    });
+
+    // Also treat window blur/focus as inactivity/activity for PWAs and single-tab cases.
+    window.addEventListener('blur', () => {
+      if (document.hidden) return;
+      scheduleDisconnect('window blurred');
+    });
+    window.addEventListener('focus', () => {
+      if (document.hidden) return;
+      reconnectNow('window focused');
     });
   }).catch(error => {
     console.warn('Firebase: Failed to setup offline handling:', error);

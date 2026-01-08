@@ -5,11 +5,19 @@ import { CanvasImage } from './CanvasImage';
 import { CanvasFile } from './CanvasFile';
 import { Note, CanvasImage as ICanvasImage, CanvasFile as ICanvasFile } from '../../types';
 
+interface VisibleRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
 interface CanvasItemsProps {
   notes: Note[];
   images: ICanvasImage[];
   files: ICanvasFile[];
   editingNoteId: string | null;
+  selectedNoteId: string | null;
   selectedImageId: string | null;
   selectedFileId: string | null;
   selectImage: (id: string | null) => void;
@@ -17,6 +25,7 @@ interface CanvasItemsProps {
   setEditingNoteId: (id: string | null) => void;
   setIsAnyNoteResizing: (isResizing: boolean) => void;
   setIsAnyNoteDragging: (isDragging: boolean) => void;
+  visibleRect?: VisibleRect | null;
 }
 
 export const CanvasItems: React.FC<CanvasItemsProps> = ({
@@ -24,6 +33,7 @@ export const CanvasItems: React.FC<CanvasItemsProps> = ({
   images,
   files,
   editingNoteId,
+  selectedNoteId,
   selectedImageId,
   selectedFileId,
   selectImage,
@@ -31,17 +41,48 @@ export const CanvasItems: React.FC<CanvasItemsProps> = ({
   setEditingNoteId,
   setIsAnyNoteResizing,
   setIsAnyNoteDragging,
+  visibleRect = null,
 }) => {
-  // ✅ FIX: Memoize sorted notes to avoid re-sorting on every render
-  const sortedNotes = useMemo(
-    () => [...notes].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)),
-    [notes]
-  );
+  const isInView = useMemo(() => {
+    if (!visibleRect) return () => true;
+    return (x: number, y: number, width: number, height: number) => {
+      const right = x + width;
+      const bottom = y + height;
+      return (
+        x < visibleRect.right &&
+        right > visibleRect.left &&
+        y < visibleRect.bottom &&
+        bottom > visibleRect.top
+      );
+    };
+  }, [visibleRect]);
+
+  const visibleImages = useMemo(() => {
+    if (!visibleRect) return images;
+    return images.filter((img) => img.id === selectedImageId || isInView(img.x, img.y, img.width, img.height));
+  }, [images, selectedImageId, visibleRect, isInView]);
+
+  const visibleFiles = useMemo(() => {
+    if (!visibleRect) return files;
+    return files.filter((f) => f.id === selectedFileId || isInView(f.x, f.y, f.width, f.height));
+  }, [files, selectedFileId, visibleRect, isInView]);
+
+  // Sort only what we render (reduces cost when many offscreen notes exist).
+  const visibleNotes = useMemo(() => {
+    if (!visibleRect) return [...notes].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+    const filtered = notes.filter(
+      (n) =>
+        n.id === selectedNoteId ||
+        n.id === editingNoteId ||
+        isInView(n.x, n.y, n.width, n.height)
+    );
+    return filtered.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+  }, [notes, selectedNoteId, editingNoteId, visibleRect, isInView]);
 
   return (
     <Layer>
       {/* Render images */}
-      {images.map((image) => (
+      {visibleImages.map((image) => (
         <CanvasImage
           key={image.id}
           image={image}
@@ -57,7 +98,7 @@ export const CanvasItems: React.FC<CanvasItemsProps> = ({
       ))}
 
       {/* Render files */}
-      {files.map((file) => (
+      {visibleFiles.map((file) => (
         <CanvasFile
           key={file.id}
           file={file}
@@ -70,7 +111,7 @@ export const CanvasItems: React.FC<CanvasItemsProps> = ({
       ))}
 
       {/* Render notes sorted by zIndex */}
-      {sortedNotes.map((note) => (
+      {visibleNotes.map((note) => (
         <EnterpriseNote
           key={note.id}
           note={note}

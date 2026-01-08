@@ -33,6 +33,7 @@ export const CanvasFile = ({
   const [isDragging, setIsDragging] = useState(false);
   
   const updateFile = useAppStore((state) => state.updateFile);
+  const selectToMoveMode = useAppStore((state) => state.selectToMoveMode);
 
   const handleDragStart = () => {
     setIsDragging(true);
@@ -108,7 +109,7 @@ export const CanvasFile = ({
       ref={groupRef}
       x={file.x}
       y={file.y}
-      draggable
+      draggable={!selectToMoveMode || isSelected}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={handleClick}
@@ -125,6 +126,7 @@ export const CanvasFile = ({
         cornerRadius={12}
         offsetX={isDragging ? -4 : -2}
         offsetY={isDragging ? 8 : 4}
+        listening={false}
       />
       
       {/* Main container */}
@@ -149,6 +151,7 @@ export const CanvasFile = ({
         fill="white"
         cornerRadius={8}
         opacity={0.8}
+        listening={false}
       />
       
       {/* File icon */}
@@ -161,6 +164,7 @@ export const CanvasFile = ({
         verticalAlign="middle"
         offsetX={24}
         offsetY={24}
+        listening={false}
       />
       
       {/* File name */}
@@ -174,6 +178,7 @@ export const CanvasFile = ({
         fill="#1F2937"
         align="center"
         fontStyle="500"
+        listening={false}
       />
       
       {/* File type badge */}
@@ -184,6 +189,7 @@ export const CanvasFile = ({
         height={24}
         fill={colors.icon}
         cornerRadius={12}
+        listening={false}
       />
       <Text
         x={10}
@@ -197,6 +203,7 @@ export const CanvasFile = ({
         align="center"
         verticalAlign="middle"
         fontStyle="bold"
+        listening={false}
       />
       
       {/* File size */}
@@ -208,6 +215,7 @@ export const CanvasFile = ({
         fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
         fill="#6B7280"
         align="right"
+        listening={false}
       />
       
       {/* Double-click hint */}
@@ -221,6 +229,7 @@ export const CanvasFile = ({
         fill="#9CA3AF"
         align="center"
         fontStyle="italic"
+        listening={false}
       />
     </Group>
   );

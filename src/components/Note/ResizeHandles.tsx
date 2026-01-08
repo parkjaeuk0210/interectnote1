@@ -112,12 +112,14 @@ export const ResizeHandles = ({
             shadowOpacity={0.3}
             shadowEnabled={performanceMode === 'high'}
             opacity={isCurrentHovered ? 1 : 0.9}
+            listening={false}
           />
           {/* Inner accent dot */}
           <Circle
             radius={HANDLE_SIZE / 4}
             fill={colors.accent}
             opacity={0.6}
+            listening={false}
           />
         </Group>
       );
@@ -145,6 +147,7 @@ export const ResizeHandles = ({
             shadowOpacity={0.3}
             shadowEnabled={performanceMode === 'high'}
             opacity={isCurrentHovered ? 1 : 0.9}
+            listening={false}
           />
         </Group>
       );

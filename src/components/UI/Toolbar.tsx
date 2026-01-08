@@ -26,6 +26,8 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
   const deleteFile = useAppStore((state) => state.deleteFile);
   const clearCanvas = useAppStore((state) => state.clearCanvas);
   const viewport = useAppStore((state) => state.viewport);
+  const selectToMoveMode = useAppStore((state) => state.selectToMoveMode);
+  const toggleSelectToMoveMode = useAppStore((state) => state.toggleSelectToMoveMode);
   const updateNote = useAppStore((state) => state.updateNote);
   const addImage = useAppStore((state) => state.addImage);
   const addFile = useAppStore((state) => state.addFile);
@@ -187,6 +189,30 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
+        </button>
+
+        <button
+          onClick={toggleSelectToMoveMode}
+          className={`glass-button rounded-full p-3 hover:scale-105 transition-transform text-gray-700 dark:text-gray-200 ${
+            selectToMoveMode ? 'bg-blue-500 bg-opacity-20' : ''
+          }`}
+          title={
+            selectToMoveMode
+              ? '선택 후 이동: 오브젝트를 클릭해 선택한 뒤 드래그로 이동 (일반 드래그는 캔버스 이동)'
+              : '즉시 이동: 오브젝트를 바로 드래그해서 이동'
+          }
+          aria-label={selectToMoveMode ? '선택 후 이동 모드' : '즉시 이동 모드'}
+        >
+          {selectToMoveMode ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 9V5h4M20 15v4h-4M20 9V5h-4M4 15v4h4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2 2 2-2M14 10l-2-2-2 2" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l7 18 2-7 7-2L3 3z" />
+            </svg>
+          )}
         </button>
 
         {user && (

@@ -6,9 +6,11 @@ import { CanvasFile, DrawingTool, DrawingAnnotation } from '../../types';
 import { PDFAnnotationLayer } from './PDFAnnotationLayer';
 import { DrawingToolbar, useDrawingKeyboardShortcuts } from './DrawingToolbar';
 import { useAppStore } from '../../contexts/StoreProvider';
+import { useAppActivity } from '../../hooks/useAppActivity';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 // PDF.js worker 설정
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface PDFCanvasProps {
   file: CanvasFile;
@@ -31,90 +33,166 @@ export const PDFCanvas = ({
   const [currentPage] = useState<number>(1);
 
   const updateFile = useAppStore((state) => state.updateFile);
-
-  // PDF를 이미지로 렌더링
-  const renderPDFToImage = async () => {
-    try {
-      if (!file.url) {
-        console.error('PDF URL이 없습니다.');
-        return;
-      }
-
-      // PDF.js를 사용하여 실제 PDF 렌더링
-      const loadingTask = pdfjs.getDocument(file.url);
-      const pdf = await loadingTask.promise;
-      setNumPages(pdf.numPages);
-
-      // 첫 번째 페이지 렌더링
-      const page = await pdf.getPage(currentPage);
-      const viewport = page.getViewport({ scale: 1.5 });
-
-      // Canvas 생성
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      
-      if (!context) {
-        console.error('Canvas context를 가져올 수 없습니다.');
-        return;
-      }
-
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-
-      // PDF 페이지를 canvas에 렌더링
-      const renderContext = {
-        canvasContext: context,
-        viewport: viewport
-      };
-
-      await page.render(renderContext).promise;
-
-      // Canvas를 이미지로 변환
-      const img = new Image();
-      img.onload = () => {
-        setPdfImage(img);
-      };
-      img.src = canvas.toDataURL();
-      
-    } catch (error) {
-      console.error('PDF 렌더링 오류:', error);
-      
-      // 오류 발생 시 폴백 아이콘 렌더링
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      if (!context) return;
-
-      canvas.width = file.width;
-      canvas.height = file.height;
-
-      // 배경색 설정
-      context.fillStyle = 'white';
-      context.fillRect(0, 0, canvas.width, canvas.height);
-
-      // 오류 메시지와 아이콘
-      context.fillStyle = '#DC2626';
-      context.font = '48px Arial';
-      context.textAlign = 'center';
-      context.fillText('📄', canvas.width / 2, canvas.height / 2 - 40);
-      
-      context.fillStyle = '#1F2937';
-      context.font = '14px Arial';
-      context.fillText('PDF 로딩 실패', canvas.width / 2, canvas.height / 2 + 10);
-      context.fillText(file.fileName, canvas.width / 2, canvas.height / 2 + 30);
-
-      const img = new Image();
-      img.onload = () => {
-        setPdfImage(img);
-      };
-      img.src = canvas.toDataURL();
-    }
-  };
+  const selectToMoveMode = useAppStore((state) => state.selectToMoveMode);
+  const { isVisible: isAppVisible, isIdle: isAppIdle } = useAppActivity({ idleMs: 30_000 });
 
   useEffect(() => {
-    if (file.fileType === 'pdf') {
-      renderPDFToImage();
+    if (file.fileType !== 'pdf' || !file.url) {
+      setPdfImage(null);
+      setNumPages(0);
+      return;
     }
-  }, [file]);
+
+    // When app is hidden, aggressively release decoded image memory.
+    if (!isAppVisible) {
+      setPdfImage(null);
+      return;
+    }
+
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    const loadingTask = pdfjs.getDocument(file.url);
+    let renderTask: { cancel?: () => void } | null = null;
+
+    const cleanup = async () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+      }
+      try {
+        renderTask?.cancel?.();
+      } catch {}
+      try {
+        await loadingTask.destroy();
+      } catch {}
+    };
+
+    const render = async () => {
+      try {
+        const pdf = await loadingTask.promise;
+        if (cancelled) return;
+
+        setNumPages(pdf.numPages);
+
+        const page = await pdf.getPage(currentPage);
+        if (cancelled) return;
+
+        const scale = isAppIdle ? 0.8 : 1.25;
+        const viewport = page.getViewport({ scale });
+
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) {
+          throw new Error('Canvas context를 가져올 수 없습니다.');
+        }
+
+        canvas.width = Math.max(1, Math.floor(viewport.width));
+        canvas.height = Math.max(1, Math.floor(viewport.height));
+
+        renderTask = page.render({ canvasContext: context, viewport });
+        await (renderTask as any).promise;
+
+        try {
+          page.cleanup();
+        } catch {}
+
+        if (cancelled) return;
+
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((b) => {
+            if (b) resolve(b);
+            else reject(new Error('canvas.toBlob returned null'));
+          }, 'image/png');
+        });
+
+        if (cancelled) return;
+
+        objectUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = () => {
+          if (cancelled) {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            return;
+          }
+          setPdfImage(img);
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+          }
+        };
+        img.onerror = () => {
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+          }
+        };
+        img.src = objectUrl;
+      } catch (error) {
+        if (cancelled) return;
+        console.error('PDF 렌더링 오류:', error);
+
+        // 오류 발생 시 폴백 아이콘 렌더링 (저해상도)
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) return;
+
+        canvas.width = Math.max(1, Math.floor(file.width));
+        canvas.height = Math.max(1, Math.floor(file.height));
+
+        context.fillStyle = 'white';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        context.fillStyle = '#DC2626';
+        context.font = '48px Arial';
+        context.textAlign = 'center';
+        context.fillText('📄', canvas.width / 2, canvas.height / 2 - 40);
+
+        context.fillStyle = '#1F2937';
+        context.font = '14px Arial';
+        context.fillText('PDF 로딩 실패', canvas.width / 2, canvas.height / 2 + 10);
+        context.fillText(file.fileName, canvas.width / 2, canvas.height / 2 + 30);
+
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((b) => {
+            if (b) resolve(b);
+            else reject(new Error('canvas.toBlob returned null'));
+          }, 'image/png');
+        });
+
+        if (cancelled) return;
+
+        objectUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = () => {
+          if (cancelled) {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            return;
+          }
+          setPdfImage(img);
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+          }
+        };
+        img.onerror = () => {
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+          }
+        };
+        img.src = objectUrl;
+      }
+    };
+
+    render();
+
+    return () => {
+      void cleanup();
+    };
+  }, [file.fileType, file.url, currentPage, isAppVisible, isAppIdle, file.fileName, file.width, file.height]);
 
   // 키보드 단축키 설정
   const { handleKeyDown } = useDrawingKeyboardShortcuts(
@@ -216,7 +294,7 @@ export const PDFCanvas = ({
       <Group
         x={file.x}
         y={file.y}
-        draggable={!isDrawingMode}
+        draggable={!isDrawingMode && (!selectToMoveMode || isSelected)}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onClick={handleClick}
@@ -233,6 +311,7 @@ export const PDFCanvas = ({
           cornerRadius={12}
           offsetX={isDragging ? -4 : -2}
           offsetY={isDragging ? 8 : 4}
+          listening={false}
         />
         
         {/* PDF 배경 */}
@@ -257,6 +336,7 @@ export const PDFCanvas = ({
             height={file.height}
             image={pdfImage}
             cornerRadius={12}
+            listening={false}
           />
         )}
 
@@ -271,6 +351,7 @@ export const PDFCanvas = ({
             cornerRadius={12}
             dash={[5, 5]}
             opacity={0.8}
+            listening={false}
           />
         )}
 
@@ -295,6 +376,7 @@ export const PDFCanvas = ({
               height={25}
               fill="rgba(0, 0, 0, 0.7)"
               cornerRadius={12}
+              listening={false}
             />
             <Text
               x={file.width - 45}
@@ -304,6 +386,7 @@ export const PDFCanvas = ({
               fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
               fill="white"
               align="center"
+              listening={false}
             />
           </Group>
         )}
@@ -318,6 +401,7 @@ export const PDFCanvas = ({
               height={25}
               fill="rgba(59, 130, 246, 0.9)"
               cornerRadius={12}
+              listening={false}
             />
             <Text
               x={55}
@@ -327,6 +411,7 @@ export const PDFCanvas = ({
               fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
               fill="white"
               align="center"
+              listening={false}
             />
           </Group>
         )}

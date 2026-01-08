@@ -8,6 +8,7 @@ import { useCanvasGestures } from '../../hooks/useCanvasGestures';
 import { useWindowResize } from '../../hooks/useWindowResize';
 import { useCanvasHandlers } from '../../hooks/useCanvasHandlers';
 import { useMobileOptimizations } from '../../hooks/useMobileOptimizations';
+import { useAppActivity } from '../../hooks/useAppActivity';
 import Konva from 'konva';
 import { getPerformanceMode } from '../../utils/device';
 
@@ -24,6 +25,7 @@ export const InfiniteCanvas = React.memo(() => {
   const addNote = useAppStore((state) => state.addNote);
   const selectNote = useAppStore((state) => state.selectNote);
   const updateNote = useAppStore((state) => state.updateNote);
+  const selectedNoteId = useAppStore((state) => state.selectedNoteId);
   const selectedImageId = useAppStore((state) => state.selectedImageId);
   const selectedFileId = useAppStore((state) => state.selectedFileId);
   const selectImage = useAppStore((state) => state.selectImage);
@@ -31,6 +33,19 @@ export const InfiniteCanvas = React.memo(() => {
   
   // Device optimizations
   const performanceMode = useMemo(() => getPerformanceMode(), []);
+
+  // App activity (visibility/focus/idle) to reduce long-run energy impact
+  const { isVisible: isAppVisible, isIdle: isAppIdle } = useAppActivity({ idleMs: 30_000 });
+  const isLowPower = !isAppVisible || isAppIdle;
+  const pixelRatio = useMemo(() => {
+    const dpr = window.devicePixelRatio || 1;
+    if (!isAppVisible) return 1;
+    if (isAppIdle) return 1;
+    // Clamp DPR on non-mobile to reduce GPU load on retina displays.
+    if (performanceMode === 'high') return Math.min(dpr, 2);
+    if (performanceMode === 'medium') return Math.min(dpr, 1.5);
+    return 1;
+  }, [isAppVisible, isAppIdle, performanceMode]);
   
   // Apply mobile optimizations
   useMobileOptimizations();
@@ -41,6 +56,19 @@ export const InfiniteCanvas = React.memo(() => {
   // Check if any note is currently being resized or dragged
   const [isAnyNoteResizing, setIsAnyNoteResizing] = useState(false);
   const [isAnyNoteDragging, setIsAnyNoteDragging] = useState(false);
+
+  const visibleRect = useMemo(() => {
+    const scale = Math.max(0.0001, viewport.scale || 1);
+    const marginScreenPx = 300;
+    const margin = marginScreenPx / scale;
+
+    const left = (0 - viewport.x) / scale - margin;
+    const top = (0 - viewport.y) / scale - margin;
+    const right = (dimensions.width - viewport.x) / scale + margin;
+    const bottom = (dimensions.height - viewport.y) / scale + margin;
+
+    return { left, top, right, bottom };
+  }, [viewport.x, viewport.y, viewport.scale, dimensions.width, dimensions.height]);
   
   // Editor state
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -83,6 +111,7 @@ export const InfiniteCanvas = React.memo(() => {
     isAnyNoteResizing,
     isAnyNoteDragging,
     isInDrawingMode: isAnyPDFInDrawingMode,
+    enabled: isAppVisible,
   });
   
   // Update canvas dragging state
@@ -143,15 +172,17 @@ export const InfiniteCanvas = React.memo(() => {
         y={viewport.y}
         scaleX={viewport.scale}
         scaleY={viewport.scale}
-        listening={!isCanvasDragging || performanceMode !== 'low'} // Optimize event handling during drag
-        perfectDrawEnabled={performanceMode === 'high'}
-        pixelRatio={performanceMode === 'low' ? 1 : window.devicePixelRatio}
+        // Disable Konva hit testing/events while panning to avoid accidental item selection on drag end
+        listening={!isCanvasDragging && isAppVisible}
+        perfectDrawEnabled={performanceMode === 'high' && !isLowPower}
+        pixelRatio={pixelRatio}
       >
         <CanvasItems
           notes={notes}
           images={images}
           files={files}
           editingNoteId={editingNoteId}
+          selectedNoteId={selectedNoteId}
           selectedImageId={selectedImageId}
           selectedFileId={selectedFileId}
           selectImage={selectImage}
@@ -159,6 +190,7 @@ export const InfiniteCanvas = React.memo(() => {
           setEditingNoteId={setEditingNoteId}
           setIsAnyNoteResizing={setIsAnyNoteResizing}
           setIsAnyNoteDragging={setIsAnyNoteDragging}
+          visibleRect={isAnyNoteDragging || isAnyNoteResizing ? null : visibleRect}
         />
       </Stage>
       {EditorComponent}

@@ -29,6 +29,7 @@ export const CanvasImage = ({
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   
   const updateImage = useAppStore((state) => state.updateImage);
+  const selectToMoveMode = useAppStore((state) => state.selectToMoveMode);
 
   // Load image
   useEffect(() => {
@@ -173,7 +174,7 @@ export const CanvasImage = ({
       ref={groupRef}
       x={image.x}
       y={image.y}
-      draggable
+      draggable={!selectToMoveMode || isSelected}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={handleClick}
@@ -195,6 +196,7 @@ export const CanvasImage = ({
           shadowColor="rgba(59, 130, 246, 0.4)"
           shadowBlur={25}
           shadowOpacity={0.6}
+          listening={false}
         />
       )}
       
@@ -278,6 +280,7 @@ export const CanvasImage = ({
             height={50}
             fill="rgba(0, 0, 0, 0.85)"
             cornerRadius={6}
+            listening={false}
           />
           <Text
             x={image.width + 10}
@@ -290,6 +293,7 @@ export const CanvasImage = ({
             fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto"
             align="center"
             verticalAlign="middle"
+            listening={false}
           />
           <Text
             x={image.width + 10}
@@ -302,6 +306,7 @@ export const CanvasImage = ({
             fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto"
             align="center"
             verticalAlign="middle"
+            listening={false}
           />
         </>
       )}

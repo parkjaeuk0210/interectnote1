@@ -32,6 +32,7 @@ export const EnterpriseNote = React.memo(({ note, isEditing = false, onStartEdit
   const selectNote = useAppStore((state) => state.selectNote);
   const isSelected = useAppStore((state) => state.selectedNoteId === note.id);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const selectToMoveMode = useAppStore((state) => state.selectToMoveMode);
   
   const colors = useMemo(
     () => {
@@ -122,7 +123,7 @@ export const EnterpriseNote = React.memo(({ note, isEditing = false, onStartEdit
       x={currentX}
       y={currentY}
       // zIndex is controlled by the order of elements in the parent Layer
-      draggable={!isEditing}
+      draggable={!isEditing && (!selectToMoveMode || isSelected)}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={handleClick}

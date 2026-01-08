@@ -16,6 +16,7 @@ import {
   subscribeToSharedFiles,
   subscribeToPresence,
   updatePresence,
+  cleanupPresenceSession,
   createSharedCanvas,
   generateShareLink,
   joinSharedCanvas,
@@ -47,6 +48,7 @@ export interface SharedCanvasStore {
   
   // Dark mode
   isDarkMode: boolean;
+  selectToMoveMode: boolean;
   
   // Collaboration state
   participants: Record<string, CanvasParticipant>;
@@ -93,6 +95,8 @@ export interface SharedCanvasStore {
   clearCanvas: () => void;
   toggleDarkMode: () => void;
   setDarkMode: (isDark: boolean) => void;
+  toggleSelectToMoveMode: () => void;
+  setSelectToMoveMode: (enabled: boolean) => void;
   initializeSharedCanvas: (canvasId: string) => void;
   cleanupSharedCanvas: () => void;
   
@@ -162,6 +166,7 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
       selectedImageId: null,
       selectedFileId: null,
       isDarkMode: false,
+      selectToMoveMode: false,
       participants: {},
       presence: {},
       isSyncing: false,
@@ -588,6 +593,14 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
         set({ isDarkMode: isDark });
       },
 
+      toggleSelectToMoveMode: () => {
+        set((state) => ({ selectToMoveMode: !state.selectToMoveMode }));
+      },
+
+      setSelectToMoveMode: (enabled: boolean) => {
+        set({ selectToMoveMode: enabled });
+      },
+
       // Initialize shared canvas
       initializeSharedCanvas: (canvasId: string) => {
         const user = auth.currentUser;
@@ -661,8 +674,12 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
       },
 
       cleanupSharedCanvas: () => {
-        const { unsubscribers } = get();
+        const { canvasId, unsubscribers } = get();
+        const user = auth.currentUser;
         unsubscribers.forEach(unsubscribe => unsubscribe());
+        if (canvasId && user) {
+          cleanupPresenceSession(canvasId, user.uid);
+        }
         set({ unsubscribers: [] });
       },
 

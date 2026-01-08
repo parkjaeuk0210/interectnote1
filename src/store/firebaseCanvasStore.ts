@@ -31,6 +31,7 @@ export interface FirebaseCanvasStore {
   selectedImageId: string | null;
   selectedFileId: string | null;
   isDarkMode: boolean;
+  selectToMoveMode: boolean;
   // Auth cache for PWA environments
   currentUserId: string | null;
   
@@ -65,6 +66,8 @@ export interface FirebaseCanvasStore {
   clearCanvas: () => void;
   toggleDarkMode: () => void;
   setDarkMode: (isDark: boolean) => void;
+  toggleSelectToMoveMode: () => void;
+  setSelectToMoveMode: (enabled: boolean) => void;
   
   // Firebase sync
   initializeFirebaseSync: (userId: string) => void;
@@ -76,6 +79,105 @@ export interface FirebaseCanvasStore {
 }
 
 const defaultColors: NoteColor[] = ['yellow', 'pink', 'blue', 'green', 'purple', 'orange'];
+
+type CacheWritePayload = {
+  notes: Note[];
+  images: CanvasImage[];
+  files: CanvasFile[];
+  isDarkMode: boolean;
+};
+
+let cacheWriteTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingCacheWrite: { userId: string; payload: CacheWritePayload } | null = null;
+let lastCacheWriteAt = 0;
+
+const CACHE_MIN_INTERVAL_MS = 10_000;
+const CACHE_DEBOUNCE_MS = 2_000;
+
+const cancelScheduledCacheWrite = () => {
+  if (typeof window === 'undefined') return;
+  if (cacheWriteTimer !== null) {
+    clearTimeout(cacheWriteTimer);
+    cacheWriteTimer = null;
+  }
+  pendingCacheWrite = null;
+};
+
+const scheduleCacheWrite = (userId: string, payload: CacheWritePayload) => {
+  if (typeof window === 'undefined') return;
+
+  pendingCacheWrite = { userId, payload };
+
+  const now = Date.now();
+  const minWait = Math.max(0, lastCacheWriteAt + CACHE_MIN_INTERVAL_MS - now);
+  const delay = Math.max(CACHE_DEBOUNCE_MS, minWait);
+
+  if (cacheWriteTimer) {
+    clearTimeout(cacheWriteTimer);
+  }
+
+  cacheWriteTimer = setTimeout(() => {
+    cacheWriteTimer = null;
+    const pending = pendingCacheWrite;
+    pendingCacheWrite = null;
+    if (!pending) return;
+
+    // Avoid background churn: cache writes are best-effort.
+    if (typeof document !== 'undefined' && document.hidden) {
+      return;
+    }
+
+    const run = () => {
+      lastCacheWriteAt = Date.now();
+
+      // IndexedDB cache (large-capacity)
+      if (indexedDBManager.isAvailable()) {
+        indexedDBManager
+          .saveAllUserData(pending.userId, {
+            notes: pending.payload.notes,
+            images: pending.payload.images,
+            files: pending.payload.files,
+            settings: {
+              isDarkMode: pending.payload.isDarkMode,
+            },
+          })
+          .catch((err) => {
+            console.warn('IndexedDB save failed:', err);
+          });
+      }
+
+      // localStorage fallback (limited size, for unsupported browsers)
+      try {
+        const cache = {
+          version: 1,
+          updatedAt: Date.now(),
+          notes: pending.payload.notes
+            .slice(0, 50)
+            .map((n) => ({ ...n, createdAt: n.createdAt.getTime(), updatedAt: n.updatedAt.getTime() })),
+          images: pending.payload.images
+            .slice(0, 20)
+            .map((img) => ({ ...img, createdAt: img.createdAt.getTime() })),
+          files: pending.payload.files
+            .slice(0, 10)
+            .map((f) => ({ ...f, createdAt: f.createdAt.getTime() })),
+          isDarkMode: pending.payload.isDarkMode,
+        };
+        localStorage.setItem(`remoteCache:${pending.userId}`, JSON.stringify(cache));
+      } catch {}
+    };
+
+    const requestIdle = (window as any).requestIdleCallback as
+      | ((cb: () => void, opts?: { timeout?: number }) => void)
+      | undefined;
+
+    if (typeof requestIdle === 'function') {
+      requestIdle(run, { timeout: 2000 });
+      return;
+    }
+
+    setTimeout(run, 0);
+  }, delay);
+};
 
 // Helper to convert Firebase data to local format
 const firebaseNoteToLocal = (firebaseNote: FirebaseNote): Note => ({
@@ -132,6 +234,7 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
   selectedImageId: null,
   selectedFileId: null,
   isDarkMode: false,
+  selectToMoveMode: false,
   currentUserId: null,
   isSyncing: false,
   syncError: null,
@@ -516,6 +619,14 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
     }
   },
 
+  toggleSelectToMoveMode: () => {
+    set((state) => ({ selectToMoveMode: !state.selectToMoveMode }));
+  },
+
+  setSelectToMoveMode: (enabled: boolean) => {
+    set({ selectToMoveMode: enabled });
+  },
+
   // Firebase sync - 최적화: 4개 리스너 → 1개 통합 리스너 (75% 연결 감소)
   // + IndexedDB 캐싱으로 Firebase 대역폭 70% 절감
   initializeFirebaseSync: (userId: string) => {
@@ -623,50 +734,25 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
         }, 2000);
       }
 
+      const nextIsDarkMode =
+        settings?.isDarkMode !== undefined ? settings.isDarkMode : get().isDarkMode;
+
       // Update state
-      set((state) => {
-        const next = {
-          ...state,
-          notes,
-          images,
-          files,
-          notesReady: true,
-          imagesReady: true,
-          filesReady: true,
-          settingsReady: true,
-          remoteReady: true,
-          ...(settings?.isDarkMode !== undefined ? { isDarkMode: settings.isDarkMode } : {}),
-        } as FirebaseCanvasStore;
+      set((state) => ({
+        ...state,
+        notes,
+        images,
+        files,
+        notesReady: true,
+        imagesReady: true,
+        filesReady: true,
+        settingsReady: true,
+        remoteReady: true,
+        ...(settings?.isDarkMode !== undefined ? { isDarkMode: settings.isDarkMode } : {}),
+      }));
 
-        // IndexedDB에 캐시 저장 (비동기, 대용량 지원)
-        if (indexedDBManager.isAvailable()) {
-          indexedDBManager.saveAllUserData(userId, {
-            notes: next.notes,
-            images: next.images,
-            files: next.files,
-            settings: {
-              isDarkMode: next.isDarkMode,
-            },
-          }).catch(err => {
-            console.warn('IndexedDB save failed:', err);
-          });
-        }
-
-        // localStorage 폴백 캐시도 유지 (IndexedDB 미지원 브라우저용)
-        try {
-          const cache = {
-            version: 1,
-            updatedAt: Date.now(),
-            notes: next.notes.slice(0, 50).map(n => ({ ...n, createdAt: n.createdAt.getTime(), updatedAt: n.updatedAt.getTime() })), // 최근 50개만
-            images: next.images.slice(0, 20).map(img => ({ ...img, createdAt: img.createdAt.getTime() })), // 최근 20개만
-            files: next.files.slice(0, 10).map(f => ({ ...f, createdAt: f.createdAt.getTime() })), // 최근 10개만
-            isDarkMode: next.isDarkMode,
-          };
-          localStorage.setItem(`remoteCache:${userId}`, JSON.stringify(cache));
-        } catch {}
-
-        return next;
-      });
+      // 캐시 저장은 디바운스/스로틀 처리해서 배터리/디스크 I/O를 줄인다.
+      scheduleCacheWrite(userId, { notes, images, files, isDarkMode: nextIsDarkMode });
     });
 
     set({ unsubscribers: [unsubscriber] });
@@ -675,6 +761,7 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
   cleanupFirebaseSync: () => {
     const { unsubscribers } = get();
     unsubscribers.forEach(unsubscribe => unsubscribe());
+    cancelScheduledCacheWrite();
     set({ currentUserId: null, unsubscribers: [], notesReady: false, imagesReady: false, filesReady: false, settingsReady: false, remoteReady: false });
   },
   

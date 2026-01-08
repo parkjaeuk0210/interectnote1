@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: false,
       includeAssets: ['icon-192.png', 'icon-512.png', 'icon-512.svg'],
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png}'],
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,json}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/(api|__)/],
         runtimeCaching: [

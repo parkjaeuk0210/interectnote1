@@ -3,7 +3,7 @@
 애플의 Freeform에서 영감을 받은 모바일 친화적인 무한 캔버스 메모 애플리케이션입니다.
 
 ## 🌐 Live Demo
-https://interectnote1-72u8uqrm2-feras-projects-59a977f0.vercel.app
+https://interectnote1.vercel.app
 
 ## 🚀 주요 기능
 
@@ -19,7 +19,7 @@ https://interectnote1-72u8uqrm2-feras-projects-59a977f0.vercel.app
 
 ## 🛠 기술 스택
 
-- React 18 + TypeScript
+- React 19 + TypeScript
 - Konva.js (캔버스 렌더링)
 - Zustand (상태 관리)
 - Tailwind CSS (스타일링)

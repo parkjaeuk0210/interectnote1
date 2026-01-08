@@ -13,6 +13,7 @@ export interface CanvasStore {
   selectedImageId: string | null;
   selectedFileId: string | null;
   isDarkMode: boolean;
+  selectToMoveMode: boolean;
   
   addNote: (x: number, y: number) => void;
   updateNote: (id: string, updates: Partial<Note>) => void;
@@ -40,6 +41,8 @@ export interface CanvasStore {
   clearCanvas: () => void;
   toggleDarkMode: () => void;
   setDarkMode: (isDark: boolean) => void;
+  toggleSelectToMoveMode: () => void;
+  setSelectToMoveMode: (enabled: boolean) => void;
   
   undo: () => void;
   redo: () => void;
@@ -59,6 +62,7 @@ export const useCanvasStore = create<CanvasStore>()(
       selectedImageId: null,
       selectedFileId: null,
       isDarkMode: false,
+      selectToMoveMode: false,
       
       addNote: (x, y) => {
         const newNote: Note = {
@@ -263,6 +267,14 @@ export const useCanvasStore = create<CanvasStore>()(
       
       setDarkMode: (isDark) => {
         set({ isDarkMode: isDark });
+      },
+
+      toggleSelectToMoveMode: () => {
+        set((state) => ({ selectToMoveMode: !state.selectToMoveMode }));
+      },
+
+      setSelectToMoveMode: (enabled) => {
+        set({ selectToMoveMode: enabled });
       },
       
       // PDF annotation actions
