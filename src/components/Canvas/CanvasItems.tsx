@@ -28,7 +28,7 @@ interface CanvasItemsProps {
   visibleRect?: VisibleRect | null;
 }
 
-export const CanvasItems: React.FC<CanvasItemsProps> = ({
+export const CanvasItems = React.memo(function CanvasItems({
   notes,
   images,
   files,
@@ -42,7 +42,7 @@ export const CanvasItems: React.FC<CanvasItemsProps> = ({
   setIsAnyNoteResizing,
   setIsAnyNoteDragging,
   visibleRect = null,
-}) => {
+}: CanvasItemsProps) {
   const isInView = useMemo(() => {
     if (!visibleRect) return () => true;
     return (x: number, y: number, width: number, height: number) => {
@@ -127,4 +127,4 @@ export const CanvasItems: React.FC<CanvasItemsProps> = ({
       ))}
     </Layer>
   );
-};
+});

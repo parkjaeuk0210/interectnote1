@@ -15,6 +15,8 @@ import { getPerformanceMode } from '../../utils/device';
 export const InfiniteCanvas = React.memo(() => {
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  type VisibleRect = { left: number; top: number; right: number; bottom: number };
   
   // Get store values
   const notes = useAppStore((state) => state.notes);
@@ -57,18 +59,50 @@ export const InfiniteCanvas = React.memo(() => {
   const [isAnyNoteResizing, setIsAnyNoteResizing] = useState(false);
   const [isAnyNoteDragging, setIsAnyNoteDragging] = useState(false);
 
-  const visibleRect = useMemo(() => {
-    const scale = Math.max(0.0001, viewport.scale || 1);
+  const scale = useMemo(() => Math.max(0.0001, viewport.scale || 1), [viewport.scale]);
+
+  const viewportRect = useMemo<VisibleRect>(() => {
+    const left = (0 - viewport.x) / scale;
+    const top = (0 - viewport.y) / scale;
+    const right = (dimensions.width - viewport.x) / scale;
+    const bottom = (dimensions.height - viewport.y) / scale;
+    return { left, top, right, bottom };
+  }, [viewport.x, viewport.y, scale, dimensions.width, dimensions.height]);
+
+  const overscanRect = useMemo<VisibleRect>(() => {
     const marginScreenPx = 300;
     const margin = marginScreenPx / scale;
+    return {
+      left: viewportRect.left - margin,
+      top: viewportRect.top - margin,
+      right: viewportRect.right + margin,
+      bottom: viewportRect.bottom + margin,
+    };
+  }, [viewportRect, scale]);
 
-    const left = (0 - viewport.x) / scale - margin;
-    const top = (0 - viewport.y) / scale - margin;
-    const right = (dimensions.width - viewport.x) / scale + margin;
-    const bottom = (dimensions.height - viewport.y) / scale + margin;
+  // Keep culling rect stable while panning/zooming, and only refresh when the
+  // viewport exits the previously rendered overscan area. This avoids re-filtering
+  // all items on every viewport tick (big win for large canvases).
+  const [cullRect, setCullRect] = useState<VisibleRect | null>(() => overscanRect);
 
-    return { left, top, right, bottom };
-  }, [viewport.x, viewport.y, viewport.scale, dimensions.width, dimensions.height]);
+  useEffect(() => {
+    if (isAnyNoteDragging || isAnyNoteResizing) return;
+
+    if (!cullRect) {
+      setCullRect(overscanRect);
+      return;
+    }
+
+    const isViewportContained =
+      viewportRect.left >= cullRect.left &&
+      viewportRect.top >= cullRect.top &&
+      viewportRect.right <= cullRect.right &&
+      viewportRect.bottom <= cullRect.bottom;
+
+    if (!isViewportContained) {
+      setCullRect(overscanRect);
+    }
+  }, [isAnyNoteDragging, isAnyNoteResizing, cullRect, overscanRect, viewportRect]);
   
   // Editor state
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -190,7 +224,7 @@ export const InfiniteCanvas = React.memo(() => {
           setEditingNoteId={setEditingNoteId}
           setIsAnyNoteResizing={setIsAnyNoteResizing}
           setIsAnyNoteDragging={setIsAnyNoteDragging}
-          visibleRect={isAnyNoteDragging || isAnyNoteResizing ? null : visibleRect}
+          visibleRect={isAnyNoteDragging || isAnyNoteResizing ? null : cullRect}
         />
       </Stage>
       {EditorComponent}
