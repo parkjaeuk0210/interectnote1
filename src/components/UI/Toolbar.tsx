@@ -46,6 +46,24 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
     setStorageUsage(getLocalStorageUsagePercent());
   }, [notes.length, images.length, files.length]);
 
+  const handleToggleMoveMode = () => {
+    const next = !selectToMoveMode;
+    toggleSelectToMoveMode();
+
+    // First-time hint for discoverability (PWA users often miss hover tooltips)
+    try {
+      const key = 'interectnote-move-mode-hint-seen';
+      if (!localStorage.getItem(key)) {
+        toast.info(
+          next
+            ? '캔버스 이동(손): 드래그로 캔버스 이동 / 오브젝트는 선택 후 드래그'
+            : '오브젝트 이동(커서): 오브젝트를 바로 드래그해서 이동'
+        );
+        localStorage.setItem(key, 'true');
+      }
+    } catch {}
+  };
+
   const handleDelete = () => {
     if (selectedNoteId) {
       deleteNote(selectedNoteId);
@@ -189,31 +207,41 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
-        </button>
+	        </button>
 
-        <button
-          onClick={toggleSelectToMoveMode}
-          className={`glass-button rounded-full p-3 hover:scale-105 transition-transform text-gray-700 dark:text-gray-200 ${
-            selectToMoveMode ? 'bg-blue-500 bg-opacity-20' : ''
-          }`}
-          title={
-            selectToMoveMode
-              ? '선택 후 이동: 오브젝트를 클릭해 선택한 뒤 드래그로 이동 (일반 드래그는 캔버스 이동)'
-              : '즉시 이동: 오브젝트를 바로 드래그해서 이동'
-          }
-          aria-label={selectToMoveMode ? '선택 후 이동 모드' : '즉시 이동 모드'}
-        >
-          {selectToMoveMode ? (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 9V5h4M20 15v4h-4M20 9V5h-4M4 15v4h4" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2 2 2-2M14 10l-2-2-2 2" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l7 18 2-7 7-2L3 3z" />
-            </svg>
-          )}
-        </button>
+	        <button
+	          onClick={handleToggleMoveMode}
+	          className={`glass-button rounded-full p-3 hover:scale-105 transition-transform text-gray-700 dark:text-gray-200 ${
+	            selectToMoveMode ? 'bg-blue-500 bg-opacity-20' : ''
+	          }`}
+	          title={
+	            selectToMoveMode
+	              ? '캔버스 이동(손): 드래그로 캔버스 이동 / 오브젝트는 선택 후 드래그'
+	              : '오브젝트 이동(커서): 오브젝트를 바로 드래그해서 이동'
+	          }
+	          aria-label={selectToMoveMode ? '캔버스 이동 모드(손)' : '오브젝트 이동 모드(커서)'}
+	          aria-pressed={selectToMoveMode}
+	        >
+	          {selectToMoveMode ? (
+	            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	              <path
+	                strokeLinecap="round"
+	                strokeLinejoin="round"
+	                strokeWidth={2}
+	                d="M10.05 4.575a1.575 1.575 0 1 0-3.15 0v3m3.15-3v-1.5a1.575 1.575 0 0 1 3.15 0v1.5m-3.15 0 .075 5.925m3.075.75V4.575m0 0a1.575 1.575 0 0 1 3.15 0V15M6.9 7.575a1.575 1.575 0 1 0-3.15 0v8.175a6.75 6.75 0 0 0 6.75 6.75h2.018a5.25 5.25 0 0 0 3.712-1.538l1.732-1.732a5.25 5.25 0 0 0 1.538-3.712l.003-2.024a.668.668 0 0 1 .198-.471 1.575 1.575 0 1 0-2.228-2.228 3.818 3.818 0 0 0-1.12 2.687M6.9 7.575V12m6.27 4.318A4.49 4.49 0 0 1 16.35 15m.002 0h-.002"
+	              />
+	            </svg>
+	          ) : (
+	            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	              <path
+	                strokeLinecap="round"
+	                strokeLinejoin="round"
+	                strokeWidth={2}
+	                d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672ZM12 2.25V4.5m5.834.166-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243-1.59-1.59"
+	              />
+	            </svg>
+	          )}
+	        </button>
 
         {user && (
           <>

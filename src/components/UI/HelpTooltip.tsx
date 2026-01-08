@@ -50,14 +50,14 @@ export const HelpTooltip = () => {
             <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-xs">2</span>
             </div>
-            <p className="text-sm text-gray-700">드래그로 캔버스 이동, 휠로 확대/축소</p>
+            <p className="text-sm text-gray-700">빈 공간 드래그로 캔버스 이동, 휠로 확대/축소</p>
           </div>
           
           <div className="flex items-start gap-3">
             <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-xs">3</span>
             </div>
-            <p className="text-sm text-gray-700">메모 헤더 드래그로 위치 이동</p>
+            <p className="text-sm text-gray-700">오브젝트는 드래그로 이동 (우측 손/커서 버튼으로 이동 방식 전환)</p>
           </div>
           
           <div className="flex items-start gap-3">
