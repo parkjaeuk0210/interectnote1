@@ -145,7 +145,6 @@ export const InfiniteCanvas = React.memo(() => {
     isAnyNoteResizing,
     isAnyNoteDragging,
     isInDrawingMode: isAnyPDFInDrawingMode,
-    enabled: isAppVisible,
   });
   
   // Update canvas dragging state
@@ -206,8 +205,9 @@ export const InfiniteCanvas = React.memo(() => {
         y={viewport.y}
         scaleX={viewport.scale}
         scaleY={viewport.scale}
-        // Disable Konva hit testing/events while panning to avoid accidental item selection on drag end
-        listening={!isCanvasDragging && isAppVisible}
+        // Restore original click/drag behavior: keep hit-testing on for desktop, and
+        // only disable it during panning on low-performance devices.
+        listening={!isCanvasDragging || performanceMode !== 'low'}
         perfectDrawEnabled={performanceMode === 'high' && !isLowPower}
         pixelRatio={pixelRatio}
       >
