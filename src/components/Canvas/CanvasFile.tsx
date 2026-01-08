@@ -33,7 +33,6 @@ export const CanvasFile = ({
   const [isDragging, setIsDragging] = useState(false);
   
   const updateFile = useAppStore((state) => state.updateFile);
-  const selectToMoveMode = useAppStore((state) => state.selectToMoveMode);
 
   const handleDragStart = () => {
     setIsDragging(true);
@@ -104,15 +103,15 @@ export const CanvasFile = ({
     return truncatedName + '.' + ext;
   };
 
-  return (
-    <Group
-      ref={groupRef}
-      x={file.x}
-      y={file.y}
-      draggable={!selectToMoveMode || isSelected}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onClick={handleClick}
+	  return (
+	    <Group
+	      ref={groupRef}
+	      x={file.x}
+	      y={file.y}
+	      draggable
+	      onDragStart={handleDragStart}
+	      onDragEnd={handleDragEnd}
+	      onClick={handleClick}
       onTap={handleClick}
       onDblClick={handleDoubleClick}
       onDblTap={handleDoubleClick}

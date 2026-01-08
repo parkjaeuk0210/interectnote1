@@ -33,7 +33,6 @@ export const PDFCanvas = ({
   const [currentPage] = useState<number>(1);
 
   const updateFile = useAppStore((state) => state.updateFile);
-  const selectToMoveMode = useAppStore((state) => state.selectToMoveMode);
   const { isVisible: isAppVisible, isIdle: isAppIdle } = useAppActivity({ idleMs: 30_000 });
 
   useEffect(() => {
@@ -294,7 +293,7 @@ export const PDFCanvas = ({
       <Group
         x={file.x}
         y={file.y}
-        draggable={!isDrawingMode && (!selectToMoveMode || isSelected)}
+        draggable={!isDrawingMode}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onClick={handleClick}

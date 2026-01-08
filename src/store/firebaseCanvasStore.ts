@@ -31,7 +31,6 @@ export interface FirebaseCanvasStore {
   selectedImageId: string | null;
   selectedFileId: string | null;
   isDarkMode: boolean;
-  selectToMoveMode: boolean;
   // Auth cache for PWA environments
   currentUserId: string | null;
   
@@ -66,8 +65,6 @@ export interface FirebaseCanvasStore {
   clearCanvas: () => void;
   toggleDarkMode: () => void;
   setDarkMode: (isDark: boolean) => void;
-  toggleSelectToMoveMode: () => void;
-  setSelectToMoveMode: (enabled: boolean) => void;
   
   // Firebase sync
   initializeFirebaseSync: (userId: string) => void;
@@ -234,7 +231,6 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
   selectedImageId: null,
   selectedFileId: null,
   isDarkMode: false,
-  selectToMoveMode: false,
   currentUserId: null,
   isSyncing: false,
   syncError: null,
@@ -617,14 +613,6 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
     if (userId) {
       saveSettings(userId, { isDarkMode: isDark });
     }
-  },
-
-  toggleSelectToMoveMode: () => {
-    set((state) => ({ selectToMoveMode: !state.selectToMoveMode }));
-  },
-
-  setSelectToMoveMode: (enabled: boolean) => {
-    set({ selectToMoveMode: enabled });
   },
 
   // Firebase sync - 최적화: 4개 리스너 → 1개 통합 리스너 (75% 연결 감소)

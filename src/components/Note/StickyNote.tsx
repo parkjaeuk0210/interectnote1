@@ -19,7 +19,6 @@ export const StickyNote = ({ note }: StickyNoteProps) => {
   const selectNote = useAppStore((state) => state.selectNote);
   const selectedNoteId = useAppStore((state) => state.selectedNoteId);
   const isSelected = selectedNoteId === note.id;
-  const selectToMoveMode = useAppStore((state) => state.selectToMoveMode);
 
   // Use the centralized color system from constants
   const isDarkMode = document.documentElement.classList.contains('dark');
@@ -189,7 +188,7 @@ export const StickyNote = ({ note }: StickyNoteProps) => {
       x={note.x}
       y={note.y}
       // zIndex is controlled by the order of elements in the parent Layer
-      draggable={!isEditing && (!selectToMoveMode || isSelected)}
+      draggable={!isEditing}
       onDragEnd={handleDragEnd}
       onClick={handleClick}
       onDblClick={handleDoubleClick}

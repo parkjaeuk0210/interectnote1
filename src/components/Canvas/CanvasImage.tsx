@@ -29,7 +29,6 @@ export const CanvasImage = ({
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   
   const updateImage = useAppStore((state) => state.updateImage);
-  const selectToMoveMode = useAppStore((state) => state.selectToMoveMode);
 
   // Load image
   useEffect(() => {
@@ -169,15 +168,15 @@ export const CanvasImage = ({
 
   if (!imageObj) return null;
 
-  return (
-    <Group
-      ref={groupRef}
-      x={image.x}
-      y={image.y}
-      draggable={!selectToMoveMode || isSelected}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onClick={handleClick}
+	  return (
+	    <Group
+	      ref={groupRef}
+	      x={image.x}
+	      y={image.y}
+	      draggable
+	      onDragStart={handleDragStart}
+	      onDragEnd={handleDragEnd}
+	      onClick={handleClick}
       onTap={handleClick}
       onDblClick={handleDblClick}
       onDblTap={handleDblClick}
