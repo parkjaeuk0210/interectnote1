@@ -100,6 +100,14 @@ export const NoteBackground: React.FC<NoteBackgroundProps> = ({
         context.fill();
         context.closePath();
       }}
+      hitFunc={(context, shape) => {
+        // IMPORTANT: Don't override fillStyle in hit graph (Konva sets a unique color key).
+        // Otherwise getIntersection() cannot detect this shape and notes become unclickable.
+        context.beginPath();
+        context.roundRect(0, 0, safeWidth, safeHeight, CORNER_RADIUS);
+        context.closePath();
+        context.fillStrokeShape(shape);
+      }}
       shadowColor={isDarkMode ? "rgba(0, 0, 0, 0.5)" : "rgba(0, 0, 0, 0.1)"}
       shadowBlur={performanceMode === 'high' ? (isSelected ? 20 : 8) : 0}
       shadowOffset={{ x: 0, y: performanceMode === 'high' ? (isSelected ? 6 : 2) : 0 }}
