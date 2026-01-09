@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import Konva from 'konva';
 import { Note } from '../types';
 import { PADDING, FONT_SIZE, LINE_HEIGHT } from '../constants/colors';
-import { useCanvasStore } from '../store/canvasStore';
+import { useAppStore } from '../contexts/StoreProvider';
 
 interface EditorPortalProps {
   note: Note;
@@ -16,7 +16,7 @@ interface EditorPortalProps {
 const EditorPortal = ({ note, stageScale, position, onSave, onClose }: EditorPortalProps) => {
   const [value, setValue] = useState(note.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const isDarkMode = useCanvasStore((state) => state.isDarkMode);
+  const isDarkMode = useAppStore((state) => state.isDarkMode);
 
   useEffect(() => {
     // Focus and select all text when editor opens
