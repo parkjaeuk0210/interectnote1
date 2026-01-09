@@ -11,8 +11,10 @@ import {
   updateFile as updateFileInFirebase,
   deleteFile as deleteFileFromFirebase,
   saveSettings,
-  subscribeToUserData,
-  UserData
+  subscribeToNotes,
+  subscribeToImages,
+  subscribeToFiles,
+  subscribeToSettings
 } from '../lib/database';
 import { Note, CanvasImage, CanvasFile, Viewport, NoteColor } from '../types';
 import { FirebaseNote, FirebaseImage, FirebaseFile } from '../types/firebase';
@@ -615,8 +617,10 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
     }
   },
 
-  // Firebase sync - 최적화: 4개 리스너 → 1개 통합 리스너 (75% 연결 감소)
-  // + IndexedDB 캐싱으로 Firebase 대역폭 70% 절감
+  // Firebase sync
+  // 최적화: /users 전체 리스너 대신 경로별(/notes,/images,/files,/settings) 리스너로 분리해서
+  // 노트 변경 시 대용량 files/images까지 매번 내려받아 리렌더되는 비용을 줄인다.
+  // + IndexedDB 캐싱으로 Firebase 대역폭 절감
   initializeFirebaseSync: (userId: string) => {
     // Clean up existing subscriptions
     get().cleanupFirebaseSync();
@@ -682,68 +686,101 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
     // 캐시 로드 시작 (비동기)
     loadCache();
 
-    // 통합 구독: 1개의 리스너로 모든 데이터 수신 (연결 75% 감소)
-    const unsubscriber = subscribeToUserData(userId, (userData: UserData) => {
-      const { notes: firebaseNotes, images: firebaseImages, files: firebaseFiles, settings } = userData;
+    const updateRemoteReady = () => {
+      const state = get();
+      const nextRemoteReady = state.notesReady && state.imagesReady && state.filesReady && state.settingsReady;
+      if (state.remoteReady !== nextRemoteReady) {
+        set({ remoteReady: nextRemoteReady });
+      }
+    };
 
-      // Process notes
+    const notesUnsubscriber = subscribeToNotes(userId, (firebaseNotes) => {
       const notes = Object.entries(firebaseNotes).map(([id, note]) => ({
         ...firebaseNoteToLocal(note),
         id,
       }));
 
-      // Process images
+      set((state) => ({
+        ...state,
+        notes,
+        notesReady: true,
+      }));
+
+      updateRemoteReady();
+
+      // 캐시 저장은 디바운스/스로틀 처리해서 배터리/디스크 I/O를 줄인다.
+      scheduleCacheWrite(userId, { notes, images: get().images, files: get().files, isDarkMode: get().isDarkMode });
+    });
+
+    const imagesUnsubscriber = subscribeToImages(userId, (firebaseImages) => {
       const shouldMigrateImages = get().imagesReady === false;
+
       const images = Object.entries(firebaseImages).map(([id, image]) => ({
         ...firebaseImageToLocal(image),
         id,
       }));
 
+      set((state) => ({
+        ...state,
+        images,
+        imagesReady: true,
+      }));
+
       if (shouldMigrateImages && Object.keys(firebaseImages).length > 0) {
         setTimeout(() => {
-          migrationManager.migrateImages(userId, firebaseImages).catch(err => {
+          migrationManager.migrateImages(userId, firebaseImages).catch((err) => {
             console.error('Image migration error:', err);
           });
         }, 2000);
       }
 
-      // Process files
+      updateRemoteReady();
+
+      scheduleCacheWrite(userId, { notes: get().notes, images, files: get().files, isDarkMode: get().isDarkMode });
+    });
+
+    const filesUnsubscriber = subscribeToFiles(userId, (firebaseFiles) => {
       const shouldMigrateFiles = get().filesReady === false;
+
       const files = Object.entries(firebaseFiles).map(([id, file]) => ({
         ...firebaseFileToLocal(file),
         id,
       }));
 
+      set((state) => ({
+        ...state,
+        files,
+        filesReady: true,
+      }));
+
       if (shouldMigrateFiles && Object.keys(firebaseFiles).length > 0) {
         setTimeout(() => {
-          migrationManager.migrateFiles(userId, firebaseFiles).catch(err => {
+          migrationManager.migrateFiles(userId, firebaseFiles).catch((err) => {
             console.error('File migration error:', err);
           });
         }, 2000);
       }
 
-      const nextIsDarkMode =
-        settings?.isDarkMode !== undefined ? settings.isDarkMode : get().isDarkMode;
+      updateRemoteReady();
 
-      // Update state
-      set((state) => ({
-        ...state,
-        notes,
-        images,
-        files,
-        notesReady: true,
-        imagesReady: true,
-        filesReady: true,
-        settingsReady: true,
-        remoteReady: true,
-        ...(settings?.isDarkMode !== undefined ? { isDarkMode: settings.isDarkMode } : {}),
-      }));
-
-      // 캐시 저장은 디바운스/스로틀 처리해서 배터리/디스크 I/O를 줄인다.
-      scheduleCacheWrite(userId, { notes, images, files, isDarkMode: nextIsDarkMode });
+      scheduleCacheWrite(userId, { notes: get().notes, images: get().images, files, isDarkMode: get().isDarkMode });
     });
 
-    set({ unsubscribers: [unsubscriber] });
+    const settingsUnsubscriber = subscribeToSettings(userId, (settings) => {
+      const nextIsDarkMode = settings?.isDarkMode !== undefined ? settings.isDarkMode : get().isDarkMode;
+
+      set((state) => ({
+        ...state,
+        ...(settings?.isDarkMode !== undefined ? { isDarkMode: settings.isDarkMode } : {}),
+        settingsReady: true,
+      }));
+
+      updateRemoteReady();
+
+      scheduleCacheWrite(userId, { notes: get().notes, images: get().images, files: get().files, isDarkMode: nextIsDarkMode });
+    });
+
+    set({ unsubscribers: [notesUnsubscriber, imagesUnsubscriber, filesUnsubscriber, settingsUnsubscriber] });
   },
 
   cleanupFirebaseSync: () => {
