@@ -7,6 +7,7 @@ import { ResizeHandles } from './ResizeHandles';
 import { NoteBackground } from './components/NoteBackground';
 import { NoteContent } from './components/NoteContent';
 import { EditingIndicator } from './components/EditingIndicator';
+import { ImportantIndicator } from './components/ImportantIndicator';
 import { useNoteDrag } from '../../hooks/useNoteDrag';
 import { useNoteClick } from '../../hooks/useNoteClick';
 import { useNoteHover } from '../../hooks/useNoteHover';
@@ -148,6 +149,15 @@ export const EnterpriseNote = React.memo(({ note, isEditing = false, onStartEdit
         performanceMode={performanceMode}
       />
 
+      <ImportantIndicator
+        width={currentWidth}
+        isSelected={isSelected}
+        isImportant={note.isImportant ?? false}
+        isDarkMode={isDarkMode}
+        isInteractive={!isEditing && !isDragging && !isResizing}
+        onToggle={() => updateNote(note.id, { isImportant: !(note.isImportant ?? false) })}
+      />
+
 
 
       {/* Note content */}
@@ -198,6 +208,7 @@ export const EnterpriseNote = React.memo(({ note, isEditing = false, onStartEdit
     prevProps.note.height === nextProps.note.height &&
     prevProps.note.content === nextProps.note.content &&
     prevProps.note.color === nextProps.note.color &&
+    (prevProps.note.isImportant ?? false) === (nextProps.note.isImportant ?? false) &&
     prevTime === nextTime &&
     prevProps.isEditing === nextProps.isEditing
   );

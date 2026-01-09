@@ -38,6 +38,7 @@ interface SerializedNote {
   content: string;
   color: string;
   zIndex?: number;
+  isImportant?: boolean;
   createdAt: number;
   updatedAt: number;
   userId: string;
@@ -218,6 +219,7 @@ class IndexedDBManager {
         content: note.content,
         color: note.color,
         zIndex: note.zIndex,
+        isImportant: note.isImportant,
         createdAt: note.createdAt.getTime(),
         updatedAt: note.updatedAt.getTime(),
         userId,
@@ -250,6 +252,7 @@ class IndexedDBManager {
           content: n.content,
           color: n.color as NoteColor,
           zIndex: n.zIndex,
+          isImportant: n.isImportant ?? false,
           createdAt: new Date(n.createdAt),
           updatedAt: new Date(n.updatedAt),
         }));

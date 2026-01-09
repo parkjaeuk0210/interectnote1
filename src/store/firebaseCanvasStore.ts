@@ -192,12 +192,14 @@ const firebaseNoteToLocal = (firebaseNote: FirebaseNote): Note => ({
   height: firebaseNote.height,
   color: firebaseNote.color as NoteColor,
   zIndex: firebaseNote.zIndex || 0,
+  isImportant: firebaseNote.isImportant ?? false,
   createdAt: new Date(firebaseNote.createdAt),
   updatedAt: new Date(firebaseNote.updatedAt),
 });
 
 const isSameNote = (existing: Note, firebaseNote: FirebaseNote): boolean => {
   const zIndex = firebaseNote.zIndex || 0;
+  const isImportant = firebaseNote.isImportant ?? false;
   return (
     existing.content === firebaseNote.content &&
     existing.x === firebaseNote.x &&
@@ -206,6 +208,7 @@ const isSameNote = (existing: Note, firebaseNote: FirebaseNote): boolean => {
     existing.height === firebaseNote.height &&
     existing.color === (firebaseNote.color as any) &&
     (existing.zIndex || 0) === zIndex &&
+    (existing.isImportant ?? false) === isImportant &&
     existing.createdAt.getTime() === firebaseNote.createdAt &&
     existing.updatedAt.getTime() === firebaseNote.updatedAt
   );
@@ -283,6 +286,7 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
       height: 200,
       color: defaultColors[Math.floor(Math.random() * defaultColors.length)],
       zIndex: maxZIndex + 1,
+      isImportant: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -301,13 +305,14 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
               x,
               y,
               width: 200,
-              height: 200,
-              color: newNote.color as NoteColor,
-              zIndex: maxZIndex + 1,
-              createdAt: new Date(newNote.createdAt),
-              updatedAt: new Date(newNote.updatedAt),
-            },
-          ],
+                height: 200,
+                color: newNote.color as NoteColor,
+                zIndex: maxZIndex + 1,
+                isImportant: false,
+                createdAt: new Date(newNote.createdAt),
+                updatedAt: new Date(newNote.updatedAt),
+              },
+            ],
           selectedNoteId: newId,
           selectedImageId: null,
           selectedFileId: null,

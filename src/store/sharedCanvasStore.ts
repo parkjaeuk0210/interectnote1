@@ -114,6 +114,7 @@ const firebaseNoteToLocal = (firebaseNote: FirebaseNote): Note => ({
   height: firebaseNote.height,
   color: firebaseNote.color as NoteColor,
   zIndex: firebaseNote.zIndex || 0,
+  isImportant: firebaseNote.isImportant ?? false,
   createdAt: new Date(firebaseNote.createdAt),
   updatedAt: new Date(firebaseNote.updatedAt),
 });
@@ -312,6 +313,7 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
           height: 200,
           color: defaultColors[Math.floor(Math.random() * defaultColors.length)],
           zIndex: maxZIndex + 1,
+          isImportant: false,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };
@@ -332,6 +334,7 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
                   height: 200,
                   color: newNote.color as NoteColor,
                   zIndex: maxZIndex + 1,
+                  isImportant: false,
                   createdAt: new Date(newNote.createdAt),
                   updatedAt: new Date(newNote.updatedAt),
                 },

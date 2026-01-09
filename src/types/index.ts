@@ -7,6 +7,7 @@ export interface Note {
   content: string;
   color: NoteColor;
   zIndex?: number;
+  isImportant?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
