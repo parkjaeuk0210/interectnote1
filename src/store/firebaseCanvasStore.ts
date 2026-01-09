@@ -55,7 +55,7 @@ export interface FirebaseCanvasStore {
   addNote: (x: number, y: number) => void;
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
-  selectNote: (id: string | null) => void;
+  selectNote: (id: string | null, options?: { bringToFront?: boolean }) => void;
   
   addImage: (image: Omit<CanvasImage, 'id' | 'createdAt'>) => void;
   updateImage: (id: string, updates: Partial<CanvasImage>) => void;
@@ -391,7 +391,7 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
       });
   },
 
-  selectNote: (id: string | null) => {
+  selectNote: (id: string | null, options) => {
     const userId = get().currentUserId || auth.currentUser?.uid || null;
     if (!userId) {
       set({ selectedNoteId: id, selectedImageId: null, selectedFileId: null });
@@ -401,6 +401,15 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
     const state = get();
     
     if (id) {
+      const bringToFront = options?.bringToFront !== false;
+      if (!bringToFront) {
+        if ((globalThis as any).__zIndexTimer) {
+          clearTimeout((globalThis as any).__zIndexTimer);
+        }
+        set({ selectedNoteId: id, selectedImageId: null, selectedFileId: null });
+        return;
+      }
+
       // Get the maximum zIndex from all notes
       const maxZIndex = Math.max(...state.notes.map(n => n.zIndex || 0), 0);
       

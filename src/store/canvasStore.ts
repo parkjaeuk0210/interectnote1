@@ -17,7 +17,7 @@ export interface CanvasStore {
   addNote: (x: number, y: number) => void;
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
-  selectNote: (id: string | null) => void;
+  selectNote: (id: string | null, options?: { bringToFront?: boolean }) => void;
   
   addImage: (image: Omit<CanvasImage, 'id' | 'createdAt'>) => void;
   updateImage: (id: string, updates: Partial<CanvasImage>) => void;
@@ -110,19 +110,24 @@ export const useCanvasStore = create<CanvasStore>()(
         });
       },
       
-      selectNote: (id) => {
+      selectNote: (id, options) => {
         set((state) => {
           if (id) {
+            const bringToFront = options?.bringToFront !== false;
+            if (!bringToFront) {
+              return { selectedNoteId: id, selectedImageId: null, selectedFileId: null };
+            }
+
             // Get the maximum zIndex from all notes
             const maxZIndex = Math.max(...state.notes.map(n => n.zIndex || 0), 0);
-            
+
             // Update the selected note's zIndex to be on top
             const updatedNotes = state.notes.map(note =>
               note.id === id
                 ? { ...note, zIndex: maxZIndex + 1 }
                 : note
             );
-            
+
             return {
               notes: updatedNotes,
               selectedNoteId: id,

@@ -72,7 +72,7 @@ export interface SharedCanvasStore {
   addNote: (x: number, y: number) => void;
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
-  selectNote: (id: string | null) => void;
+  selectNote: (id: string | null, options?: { bringToFront?: boolean }) => void;
   
   // Image actions
   addImage: (image: Omit<CanvasImage, 'id' | 'createdAt'>) => void;
@@ -393,7 +393,7 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
           .finally(() => set({ isSyncing: false }));
       },
 
-      selectNote: (id: string | null) => {
+      selectNote: (id: string | null, options) => {
         const { canvasId, userRole, isOwner } = get();
         const user = auth.currentUser;
         
@@ -402,7 +402,8 @@ export const useSharedCanvasStore = create<SharedCanvasStore>()(
           updatePresence(canvasId, user.uid, { selectedItemId: id });
           
           // Update z-index if editor or owner
-          if (isOwner || userRole === 'editor') {
+          const bringToFront = options?.bringToFront !== false;
+          if (bringToFront && (isOwner || userRole === 'editor')) {
             const state = get();
             const maxZIndex = Math.max(...state.notes.map(n => n.zIndex || 0), 0);
             

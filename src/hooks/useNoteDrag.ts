@@ -6,7 +6,7 @@ import { isMobile } from '../utils/device';
 interface UseNoteDragProps {
   note: Note;
   isEditing: boolean;
-  selectNote: (id: string) => void;
+  selectNote: (id: string, options?: { bringToFront?: boolean }) => void;
   updateNote: (id: string, updates: Partial<Note>) => void;
   onDraggingChange?: (isDragging: boolean) => void;
 }
@@ -30,7 +30,12 @@ export const useNoteDrag = ({
     }
     
     setIsDragging(true);
-    selectNote(note.id);
+    // Avoid zIndex/array reorder during drag start (react-konva ghost duplication on some browsers)
+    selectNote(note.id, { bringToFront: false });
+    try {
+      e.target.moveToTop();
+      e.target.getLayer()?.batchDraw();
+    } catch {}
     onDraggingChange?.(true);
     e.cancelBubble = true;
   }, [selectNote, note.id, isEditing, onDraggingChange]);
@@ -67,11 +72,16 @@ export const useNoteDrag = ({
     dragEndFlag.current = true;
     setIsDragging(false);
     onDraggingChange?.(false);
+
+    // Persist bring-to-front after drag finishes (safe to reorder now)
+    requestAnimationFrame(() => {
+      selectNote(note.id);
+    });
     
     requestAnimationFrame(() => {
       dragEndFlag.current = false;
     });
-  }, [isDragging, updateNote, note.id, onDraggingChange]);
+  }, [isDragging, updateNote, note.id, onDraggingChange, selectNote]);
 
   return {
     isDragging,

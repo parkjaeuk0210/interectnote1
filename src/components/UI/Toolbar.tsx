@@ -169,7 +169,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
   };
 
   return (
-    <div className="fixed right-6 bottom-24 glass rounded-full px-3 py-6 shadow-lg">
+    <div className="fixed right-6 bottom-24 glass rounded-full w-16 px-2 py-5 shadow-lg">
       <div className="flex flex-col items-center gap-4">
         <input
           ref={fileInputRef}
@@ -226,14 +226,17 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
           </>
         )}
 
-        <div className="text-sm text-gray-600">
-          {Math.round(viewport.scale * 100)}%
-          <span className="ml-2 text-xs text-gray-400" title={formatBuildTooltip()}>
+        <div className="flex flex-col items-center gap-0.5 text-xs text-gray-600 leading-tight">
+          <span>{Math.round(viewport.scale * 100)}%</span>
+          <span className="text-[10px] text-gray-400" title={formatBuildTooltip()}>
             {formatBuildLabel()}
           </span>
           {storageUsage > 50 && (
-            <span className={`ml-2 ${storageUsage > 80 ? 'text-red-500' : 'text-orange-500'}`}>
-              | 저장공간 {storageUsage}%
+            <span
+              className={`${storageUsage > 80 ? 'text-red-500' : 'text-orange-500'}`}
+              title={`저장공간 ${storageUsage}%`}
+            >
+              {storageUsage}%
             </span>
           )}
         </div>
