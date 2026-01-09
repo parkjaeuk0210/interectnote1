@@ -8,7 +8,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ShareModal } from '../Sharing/ShareModal';
 import { useSharedCanvasStore } from '../../store/sharedCanvasStore';
 import { toast } from '../../utils/toast';
-import { formatBuildLabel, formatBuildTooltip } from '../../utils/buildInfo';
 
 interface ToolbarProps {
   isSharedMode?: boolean;
@@ -224,17 +223,14 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
               </button>
             )}
           </>
-        )}
+	        )}
 
-        <div className="flex flex-col items-center gap-0.5 text-xs text-gray-600 leading-tight">
-          <span>{Math.round(viewport.scale * 100)}%</span>
-          <span className="text-[10px] text-gray-400" title={formatBuildTooltip()}>
-            {formatBuildLabel()}
-          </span>
-          {storageUsage > 50 && (
-            <span
-              className={`${storageUsage > 80 ? 'text-red-500' : 'text-orange-500'}`}
-              title={`저장공간 ${storageUsage}%`}
+	        <div className="flex flex-col items-center gap-0.5 text-xs text-gray-600 leading-tight">
+	          <span>{Math.round(viewport.scale * 100)}%</span>
+	          {storageUsage > 50 && (
+	            <span
+	              className={`${storageUsage > 80 ? 'text-red-500' : 'text-orange-500'}`}
+	              title={`저장공간 ${storageUsage}%`}
             >
               {storageUsage}%
             </span>
