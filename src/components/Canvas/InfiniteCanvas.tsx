@@ -224,7 +224,7 @@ export const InfiniteCanvas = React.memo(() => {
           setEditingNoteId={setEditingNoteId}
           setIsAnyNoteResizing={setIsAnyNoteResizing}
           setIsAnyNoteDragging={setIsAnyNoteDragging}
-          visibleRect={isAnyNoteDragging || isAnyNoteResizing ? null : cullRect}
+          visibleRect={cullRect}
         />
       </Stage>
       {EditorComponent}

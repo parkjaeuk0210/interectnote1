@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import Konva from 'konva';
 import { Note } from '../types';
-import { isMobile } from '../utils/device';
 
 interface UseNoteDragProps {
   note: Note;
@@ -21,7 +20,6 @@ export const useNoteDrag = ({
   const [isDragging, setIsDragging] = useState(false);
   const rafId = useRef<number | null>(null);
   const dragEndFlag = useRef(false);
-  const isMobileDevice = isMobile();
 
   const handleDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
     if (isEditing) {
@@ -41,7 +39,7 @@ export const useNoteDrag = ({
   }, [selectNote, note.id, isEditing, onDraggingChange]);
 
   const handleDragMove = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
-    if (!isDragging || !isMobileDevice) return;
+    if (!isDragging) return;
     
     if (rafId.current) {
       cancelAnimationFrame(rafId.current);
@@ -50,7 +48,7 @@ export const useNoteDrag = ({
     rafId.current = requestAnimationFrame(() => {
       e.target.getLayer()?.batchDraw();
     });
-  }, [isDragging, isMobileDevice]);
+  }, [isDragging]);
 
   const handleDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
     if (!isDragging) return;
