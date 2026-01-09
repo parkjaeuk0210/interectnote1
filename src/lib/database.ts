@@ -1,6 +1,9 @@
 import { 
   ref, 
   onValue, 
+  onChildAdded,
+  onChildChanged,
+  onChildRemoved,
   push,
   DataSnapshot,
   serverTimestamp 
@@ -260,6 +263,54 @@ export const subscribeToNotes = (
   
   // onValue returns an unsubscribe function directly in Firebase v9
   return unsubscribe;
+};
+
+export type NotesDeltaEvent =
+  | { type: 'added' | 'changed'; id: string; note: FirebaseNote }
+  | { type: 'removed'; id: string };
+
+// Fetch notes once (safety net for initial load / reconnect)
+export const fetchNotesOnce = async (userId: string): Promise<Record<string, FirebaseNote>> => {
+  if (!database) return {};
+  const notesRef = ref(database, getNotesPath(userId));
+  const snapshot = await new Promise<DataSnapshot>((resolve) => {
+    onValue(notesRef, resolve, { onlyOnce: true });
+  });
+  return snapshot.val() || {};
+};
+
+// Subscribe to incremental note changes (child_added/changed/removed)
+export const subscribeToNotesDelta = (
+  userId: string,
+  callback: (event: NotesDeltaEvent) => void
+) => {
+  const notesRef = ref(database, getNotesPath(userId));
+
+  const offAdded = onChildAdded(notesRef, (snapshot: DataSnapshot) => {
+    const id = snapshot.key;
+    if (!id) return;
+    const note = snapshot.val() as FirebaseNote;
+    callback({ type: 'added', id, note });
+  });
+
+  const offChanged = onChildChanged(notesRef, (snapshot: DataSnapshot) => {
+    const id = snapshot.key;
+    if (!id) return;
+    const note = snapshot.val() as FirebaseNote;
+    callback({ type: 'changed', id, note });
+  });
+
+  const offRemoved = onChildRemoved(notesRef, (snapshot: DataSnapshot) => {
+    const id = snapshot.key;
+    if (!id) return;
+    callback({ type: 'removed', id });
+  });
+
+  return () => {
+    offAdded();
+    offChanged();
+    offRemoved();
+  };
 };
 
 export const subscribeToImages = (

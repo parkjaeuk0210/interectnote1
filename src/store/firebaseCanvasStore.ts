@@ -11,17 +11,20 @@ import {
   updateFile as updateFileInFirebase,
   deleteFile as deleteFileFromFirebase,
   saveSettings,
-  subscribeToNotes,
+  fetchNotesOnce,
+  subscribeToNotesDelta,
+  NotesDeltaEvent,
   subscribeToImages,
   subscribeToFiles,
   subscribeToSettings
 } from '../lib/database';
 import { Note, CanvasImage, CanvasFile, Viewport, NoteColor } from '../types';
 import { FirebaseNote, FirebaseImage, FirebaseFile } from '../types/firebase';
-import { auth } from '../lib/firebase';
+import { auth, database } from '../lib/firebase';
 import { migrationManager } from '../lib/migrationManager';
 import { useCanvasStore } from './canvasStore';
 import { indexedDBManager } from '../lib/indexedDBManager';
+import { onValue, ref } from 'firebase/database';
 
 export interface FirebaseCanvasStore {
   // Local state (same as before)
@@ -191,6 +194,21 @@ const firebaseNoteToLocal = (firebaseNote: FirebaseNote): Note => ({
   createdAt: new Date(firebaseNote.createdAt),
   updatedAt: new Date(firebaseNote.updatedAt),
 });
+
+const isSameNote = (existing: Note, firebaseNote: FirebaseNote): boolean => {
+  const zIndex = firebaseNote.zIndex || 0;
+  return (
+    existing.content === firebaseNote.content &&
+    existing.x === firebaseNote.x &&
+    existing.y === firebaseNote.y &&
+    existing.width === firebaseNote.width &&
+    existing.height === firebaseNote.height &&
+    existing.color === (firebaseNote.color as any) &&
+    (existing.zIndex || 0) === zIndex &&
+    existing.createdAt.getTime() === firebaseNote.createdAt &&
+    existing.updatedAt.getTime() === firebaseNote.updatedAt
+  );
+};
 
 const firebaseImageToLocal = (firebaseImage: FirebaseImage): CanvasImage => ({
   id: firebaseImage.id,
@@ -694,23 +712,160 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
       }
     };
 
-    const notesUnsubscriber = subscribeToNotes(userId, (firebaseNotes) => {
-      const notes = Object.entries(firebaseNotes).map(([id, note]) => ({
-        ...firebaseNoteToLocal(note),
-        id,
-      }));
+    // Notes: incremental sync (child_*), with batching + reconnect full refresh safety net.
+    const notesById = new Map<string, Note>();
+    let notesFlushRaf: number | null = null;
+    let notesSyncActive = true;
+    let isBufferingNotes = true;
+    let isRefreshingNotes = false;
+    const bufferedNotesEvents = new Map<string, NotesDeltaEvent>();
 
-      set((state) => ({
-        ...state,
-        notes,
-        notesReady: true,
-      }));
+    const flushNotesToState = () => {
+      if (!notesSyncActive) return;
+      if (notesFlushRaf !== null) return;
+      notesFlushRaf = window.requestAnimationFrame(() => {
+        notesFlushRaf = null;
+        if (!notesSyncActive) return;
+        const notes = Array.from(notesById.values());
 
-      updateRemoteReady();
+        set((state) => ({
+          ...state,
+          notes,
+          notesReady: true,
+          ...(state.selectedNoteId && !notesById.has(state.selectedNoteId) ? { selectedNoteId: null } : null),
+        }));
 
-      // 캐시 저장은 디바운스/스로틀 처리해서 배터리/디스크 I/O를 줄인다.
-      scheduleCacheWrite(userId, { notes, images: get().images, files: get().files, isDarkMode: get().isDarkMode });
+        updateRemoteReady();
+        scheduleCacheWrite(userId, { notes, images: get().images, files: get().files, isDarkMode: get().isDarkMode });
+      });
+    };
+
+    const applyNotesEvent = (event: NotesDeltaEvent): boolean => {
+      if (event.type === 'removed') {
+        return notesById.delete(event.id);
+      }
+
+      const existing = notesById.get(event.id);
+      if (existing && isSameNote(existing, event.note)) {
+        return false;
+      }
+
+      const noteWithId: FirebaseNote = { ...event.note, id: event.id };
+      notesById.set(event.id, firebaseNoteToLocal(noteWithId));
+      return true;
+    };
+
+    const applyBufferedNotesEventsToMap = (): boolean => {
+      let changed = false;
+      for (const event of bufferedNotesEvents.values()) {
+        // Ignore initial child_added flood for already-loaded notes.
+        if (event.type === 'added' && notesById.has(event.id)) continue;
+        changed = applyNotesEvent(event) || changed;
+      }
+      bufferedNotesEvents.clear();
+      return changed;
+    };
+
+    const flushBufferedNotesEvents = () => {
+      if (applyBufferedNotesEventsToMap()) {
+        flushNotesToState();
+      }
+    };
+
+    const refreshNotesOnce = async (reason: string) => {
+      if (!notesSyncActive || isRefreshingNotes) return;
+      isRefreshingNotes = true;
+      isBufferingNotes = true;
+
+      try {
+        const firebaseNotes = await fetchNotesOnce(userId);
+        if (!notesSyncActive) return;
+
+        notesById.clear();
+        for (const [id, note] of Object.entries(firebaseNotes)) {
+          const noteWithId: FirebaseNote = { ...note, id };
+          notesById.set(id, firebaseNoteToLocal(noteWithId));
+        }
+
+        // Apply any deltas that arrived while we were fetching/applying the snapshot.
+        applyBufferedNotesEventsToMap();
+
+        const notes = Array.from(notesById.values());
+        set((state) => ({
+          ...state,
+          notes,
+          notesReady: true,
+          ...(state.selectedNoteId && !notesById.has(state.selectedNoteId) ? { selectedNoteId: null } : null),
+        }));
+
+        updateRemoteReady();
+        scheduleCacheWrite(userId, { notes, images: get().images, files: get().files, isDarkMode: get().isDarkMode });
+      } catch (error) {
+        console.warn(`Notes refresh failed (${reason}):`, error);
+        // Don't block app; resume delta processing.
+        set({ notesReady: true });
+        updateRemoteReady();
+      } finally {
+        isBufferingNotes = false;
+        isRefreshingNotes = false;
+
+        // If anything was buffered at the tail end, apply it now that we're live again.
+        if (bufferedNotesEvents.size > 0) {
+          flushBufferedNotesEvents();
+        }
+      }
+    };
+
+    const notesDeltaUnsubscriber = subscribeToNotesDelta(userId, (event) => {
+      if (!notesSyncActive) return;
+      if (isBufferingNotes) {
+        bufferedNotesEvents.set(event.id, event);
+        return;
+      }
+
+      if (event.type === 'added' && notesById.has(event.id)) return;
+
+      if (applyNotesEvent(event)) {
+        flushNotesToState();
+      }
     });
+
+    // Initial notes load (full snapshot once), then delta handles incremental updates.
+    refreshNotesOnce('initial');
+
+    // Reconnect safety net: refresh notes once when the client reconnects.
+    let wasConnected = true;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    const connectedOff = database
+      ? onValue(ref(database, '.info/connected'), (snapshot) => {
+          if (!notesSyncActive) return;
+          const isConnected = snapshot.val() === true;
+          if (isConnected && !wasConnected) {
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(() => {
+              refreshNotesOnce('reconnected');
+            }, 500);
+          }
+          wasConnected = isConnected;
+        })
+      : null;
+
+    const connectedUnsubscriber = () => {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      connectedOff?.();
+    };
+
+    const notesSyncCleanup = () => {
+      notesSyncActive = false;
+      if (notesFlushRaf !== null) {
+        window.cancelAnimationFrame(notesFlushRaf);
+        notesFlushRaf = null;
+      }
+      bufferedNotesEvents.clear();
+    };
 
     const imagesUnsubscriber = subscribeToImages(userId, (firebaseImages) => {
       const shouldMigrateImages = get().imagesReady === false;
@@ -780,7 +935,16 @@ export const useFirebaseCanvasStore = create<FirebaseCanvasStore>()(
       scheduleCacheWrite(userId, { notes: get().notes, images: get().images, files: get().files, isDarkMode: nextIsDarkMode });
     });
 
-    set({ unsubscribers: [notesUnsubscriber, imagesUnsubscriber, filesUnsubscriber, settingsUnsubscriber] });
+    set({
+      unsubscribers: [
+        notesDeltaUnsubscriber,
+        connectedUnsubscriber,
+        notesSyncCleanup,
+        imagesUnsubscriber,
+        filesUnsubscriber,
+        settingsUnsubscriber,
+      ],
+    });
   },
 
   cleanupFirebaseSync: () => {
