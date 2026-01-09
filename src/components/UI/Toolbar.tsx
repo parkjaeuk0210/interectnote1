@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ShareModal } from '../Sharing/ShareModal';
 import { useSharedCanvasStore } from '../../store/sharedCanvasStore';
 import { toast } from '../../utils/toast';
+import { formatBuildLabel, formatBuildTooltip } from '../../utils/buildInfo';
 
 interface ToolbarProps {
   isSharedMode?: boolean;
@@ -227,6 +228,9 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
 
         <div className="text-sm text-gray-600">
           {Math.round(viewport.scale * 100)}%
+          <span className="ml-2 text-xs text-gray-400" title={formatBuildTooltip()}>
+            {formatBuildLabel()}
+          </span>
           {storageUsage > 50 && (
             <span className={`ml-2 ${storageUsage > 80 ? 'text-red-500' : 'text-orange-500'}`}>
               | 저장공간 {storageUsage}%

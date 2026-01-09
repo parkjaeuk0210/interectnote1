@@ -5,9 +5,19 @@ import './index.css'
 // Register service worker (vite-plugin-pwa)
 // eslint-disable-next-line import/no-unresolved
 import { registerSW } from 'virtual:pwa-register'
+import { usePwaUpdateStore } from './store/pwaUpdateStore'
 
-// Auto update SW silently
-registerSW({ immediate: true })
+const updateSW = registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    usePwaUpdateStore.getState().setNeedRefresh(true)
+  },
+  onOfflineReady() {
+    usePwaUpdateStore.getState().setOfflineReady(true)
+  },
+})
+
+usePwaUpdateStore.getState().setUpdateServiceWorker(updateSW)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

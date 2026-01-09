@@ -14,24 +14,18 @@ interface RateLimitEntry {
 
 class RateLimiter {
   private storage: Map<string, RateLimitEntry>;
-  private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.storage = new Map();
-    // Clean up old entries every minute
-    this.startCleanup();
   }
 
-  private startCleanup(): void {
-    this.cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      for (const [key, entry] of this.storage.entries()) {
-        // Remove entries older than 1 hour
-        if (now - entry.lastAttempt > 3600000) {
-          this.storage.delete(key);
-        }
+  private pruneExpiredEntries(now: number): void {
+    // Remove entries older than 1 hour (no background timer to reduce idle CPU wakeups)
+    for (const [key, entry] of this.storage.entries()) {
+      if (now - entry.lastAttempt > 3600000) {
+        this.storage.delete(key);
       }
-    }, 60000);
+    }
   }
 
   private getKey(config: RateLimitConfig, identifier: string): string {
@@ -74,6 +68,9 @@ class RateLimiter {
     const identifier = this.getIdentifier();
     const key = this.getKey(config, identifier);
     const now = Date.now();
+
+    // Opportunistic cleanup to avoid always-on intervals (battery friendly)
+    this.pruneExpiredEntries(now);
     
     let entry = this.storage.get(key);
     
@@ -142,10 +139,6 @@ class RateLimiter {
   }
 
   public destroy(): void {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-    }
     this.storage.clear();
   }
 }

@@ -2,12 +2,29 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const buildSha =
+  process.env.VERCEL_GIT_COMMIT_SHA ||
+  process.env.GITHUB_SHA ||
+  process.env.COMMIT_REF ||
+  'dev'
+const buildRef =
+  process.env.VERCEL_GIT_COMMIT_REF ||
+  process.env.GITHUB_REF_NAME ||
+  process.env.HEAD ||
+  ''
+const buildTime = new Date().toISOString()
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __BUILD_SHA__: JSON.stringify(buildSha),
+    __BUILD_REF__: JSON.stringify(buildRef),
+    __BUILD_TIME__: JSON.stringify(buildTime),
+  },
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       manifest: false,
       includeAssets: ['icon-192.png', 'icon-512.png', 'icon-512.svg'],
       workbox: {
@@ -27,7 +44,9 @@ export default defineConfig({
             }
           }
         ],
-        skipWaiting: true,
+        // Use prompt-based updates so installed PWA users can control reload timing.
+        // (Also avoids unexpected reloads during editing.)
+        skipWaiting: false,
         clientsClaim: true
       }
     })
