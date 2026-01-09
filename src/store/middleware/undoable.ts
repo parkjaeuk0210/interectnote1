@@ -54,10 +54,10 @@ const undoableImpl: Undoable = (initializer, options = {}) => {
 
       // ✅ FIX: Use reference equality instead of JSON.stringify for performance
       // Zustand ensures immutability, so reference comparison is sufficient
-      const hasTrackedChanges =
-        (prevState as any).notes !== (nextState as any).notes ||
-        (prevState as any).images !== (nextState as any).images ||
-        (prevState as any).files !== (nextState as any).files;
+      const notesChanged = (prevState as any).notes !== (nextState as any).notes;
+      const imagesChanged = (prevState as any).images !== (nextState as any).images;
+      const filesChanged = (prevState as any).files !== (nextState as any).files;
+      const hasTrackedChanges = notesChanged || imagesChanged || filesChanged;
 
       // ✅ FIX: Skip history for position-only updates (drag operations)
       // This prevents deepClone on every drag move, improving performance significantly
@@ -87,12 +87,16 @@ const undoableImpl: Undoable = (initializer, options = {}) => {
       const shouldTrack = hasTrackedChanges && !isPositionOnlyChange();
       
       if (shouldTrack && !isStateEqual(prevState, nextState)) {
+        // Use the last history snapshot to avoid repeatedly cloning large, unchanged data
+        // (especially big PDFs/images in `files/images`), which can cause high memory/CPU.
+        const prevSnapshot = useHistoryStore.getState().currentState as any | null;
+
         // Only save the parts we care about for undo/redo
         // Deep clone to avoid future mutations leaking into history snapshots
         const snapshot = {
-          notes: deepClone((nextState as any).notes),
-          images: deepClone((nextState as any).images),
-          files: deepClone((nextState as any).files),
+          notes: notesChanged ? deepClone((nextState as any).notes) : (prevSnapshot?.notes ?? deepClone((nextState as any).notes)),
+          images: imagesChanged ? deepClone((nextState as any).images) : (prevSnapshot?.images ?? deepClone((nextState as any).images)),
+          files: filesChanged ? deepClone((nextState as any).files) : (prevSnapshot?.files ?? deepClone((nextState as any).files)),
           viewport: deepClone((nextState as any).viewport || { x: 0, y: 0, scale: 1 }),
           selectedNoteId: (nextState as any).selectedNoteId || null,
           selectedImageId: (nextState as any).selectedImageId || null,
