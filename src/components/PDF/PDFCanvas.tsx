@@ -89,7 +89,7 @@ export const PDFCanvas = ({
         canvas.width = Math.max(1, Math.floor(viewport.width));
         canvas.height = Math.max(1, Math.floor(viewport.height));
 
-        renderTask = page.render({ canvas, viewport });
+        renderTask = page.render({ canvasContext: context, viewport } as any);
         await (renderTask as any).promise;
 
         try {
