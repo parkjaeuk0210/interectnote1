@@ -187,6 +187,14 @@ export const InfiniteCanvas = React.memo(() => {
     setIsCanvasDragging: canvasGestures.setIsCanvasDragging,
   });
 
+  const stagePixelRatio = isAnyNoteDragging || isAnyNoteResizing || isCanvasDragging ? 1 : pixelRatio;
+  const stagePerfectDrawEnabled =
+    performanceMode === 'high' &&
+    !isLowPower &&
+    !isAnyNoteDragging &&
+    !isAnyNoteResizing &&
+    !isCanvasDragging;
+
   return (
     <div ref={containerRef} className="w-full h-full" style={{ 
       touchAction: 'none',
@@ -208,8 +216,8 @@ export const InfiniteCanvas = React.memo(() => {
         // Restore original click/drag behavior: keep hit-testing on for desktop, and
         // only disable it during panning on low-performance devices.
         listening={!isCanvasDragging || performanceMode !== 'low'}
-        perfectDrawEnabled={performanceMode === 'high' && !isLowPower}
-        pixelRatio={pixelRatio}
+        perfectDrawEnabled={stagePerfectDrawEnabled}
+        pixelRatio={stagePixelRatio}
       >
         <CanvasItems
           notes={notes}

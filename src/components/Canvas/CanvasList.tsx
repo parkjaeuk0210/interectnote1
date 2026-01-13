@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStoreMode } from '../../contexts/StoreProvider';
 import { useSharedCanvasStore } from '../../store/sharedCanvasStore';
@@ -29,9 +29,61 @@ export const CanvasList: React.FC<CanvasListProps> = ({ isOpen, onClose }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [showNewCanvas, setShowNewCanvas] = useState(false);
   const [newCanvasName, setNewCanvasName] = useState('');
+  const [shouldRender, setShouldRender] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(false);
+  const closeTimeoutRef = useRef<number | null>(null);
   const notes = useAppStore((state) => state.notes);
   const images = useAppStore((state) => state.images);
   const files = useAppStore((state) => state.files);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (closeTimeoutRef.current) {
+        window.clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+
+      setShouldRender(true);
+      setIsVisible(false);
+      return;
+    }
+
+    setIsVisible(false);
+    if (!shouldRender) return;
+
+    closeTimeoutRef.current = window.setTimeout(() => {
+      setShouldRender(false);
+      closeTimeoutRef.current = null;
+    }, 300);
+
+    return () => {
+      if (closeTimeoutRef.current) {
+        window.clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+    };
+  }, [isOpen, shouldRender]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setIsVisible(true);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (user && isOpen) {
@@ -154,19 +206,28 @@ export const CanvasList: React.FC<CanvasListProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !shouldRender) return null;
 
   return (
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-20 z-40"
+        className={`fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+          isVisible ? 'opacity-100' : 'opacity-0'
+        }`}
         onClick={onClose}
       />
       
       {/* Sidebar */}
-      <div className="fixed left-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-xl z-50 transform transition-transform duration-300">
-        <div className="p-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="캔버스 목록"
+        className={`fixed left-0 top-0 h-full w-80 max-w-[calc(100vw-3rem)] glass rounded-r-2xl shadow-xl z-50 transform-gpu transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none ${
+          isVisible ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'
+        }`}
+      >
+        <div className="h-full p-6 overflow-y-auto">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               내 캔버스
