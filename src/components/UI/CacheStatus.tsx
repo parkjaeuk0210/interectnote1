@@ -92,7 +92,7 @@ export const CacheStatus: React.FC<CacheStatusProps> = ({ userId, showAlways = f
   // IndexedDB 미지원 시
   if (!indexedDBManager.isAvailable()) {
     return (
-      <div className="fixed bottom-4 left-4 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-3 py-2 rounded-lg text-xs shadow-lg">
+      <div className="fixed bottom-[calc(var(--safe-bottom)+1rem)] left-[calc(var(--safe-left)+1rem)] bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-3 py-2 rounded-lg text-xs shadow-lg">
         ⚠️ IndexedDB 미지원
       </div>
     );
@@ -117,7 +117,7 @@ export const CacheStatus: React.FC<CacheStatusProps> = ({ userId, showAlways = f
   };
 
   return (
-    <div className="fixed bottom-4 left-4 z-50">
+    <div className="fixed bottom-[calc(var(--safe-bottom)+1rem)] left-[calc(var(--safe-left)+1rem)] z-50">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="bg-gray-800 dark:bg-gray-700 text-white px-3 py-2 rounded-lg text-xs shadow-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors flex items-center gap-2"

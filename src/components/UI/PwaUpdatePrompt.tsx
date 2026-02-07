@@ -21,7 +21,7 @@ export const PwaUpdatePrompt: React.FC = () => {
   if (!needRefresh) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-[10000]">
+    <div className="fixed bottom-[calc(var(--safe-bottom)+1rem)] left-[calc(var(--safe-left)+1rem)] z-[10000]">
       <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-lg rounded-xl px-4 py-3 max-w-sm">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -61,4 +61,3 @@ export const PwaUpdatePrompt: React.FC = () => {
     </div>
   );
 };
-

@@ -38,3 +38,7 @@ DEPLOYMENT_GUIDE.md
 
 # Firebase emulator / local auth dumps
 auth-config.json
+
+# Capacitor native projects (generated locally)
+ios/
+android/

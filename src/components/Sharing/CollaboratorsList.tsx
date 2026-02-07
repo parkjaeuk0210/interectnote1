@@ -74,7 +74,7 @@ export const CollaboratorsList: React.FC<CollaboratorsListProps> = ({ onClose })
   };
 
   return (
-    <div ref={containerRef} className="fixed top-20 right-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-xs w-64 z-40">
+    <div ref={containerRef} className="fixed top-[calc(var(--safe-top)+5rem)] right-[calc(var(--safe-right)+1.5rem)] bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-xs w-64 z-40">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

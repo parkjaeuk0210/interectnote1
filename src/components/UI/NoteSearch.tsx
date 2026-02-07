@@ -165,7 +165,7 @@ export const NoteSearch: React.FC = () => {
 
   const overlay = isOpen ? (
     <div
-      className="fixed inset-0 z-[9998] bg-black/20 backdrop-blur-[2px] flex items-start justify-center p-4 pt-20"
+      className="fixed inset-0 z-[9998] bg-black/20 backdrop-blur-[2px] flex items-start justify-center p-4 pt-[calc(var(--safe-top)+5rem)]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) close();
       }}
@@ -287,4 +287,3 @@ export const NoteSearch: React.FC = () => {
     </>
   );
 };
-

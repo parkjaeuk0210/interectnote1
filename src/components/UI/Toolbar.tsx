@@ -169,7 +169,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
   };
 
   return (
-    <div className="fixed right-6 bottom-24 glass rounded-full w-16 px-2 py-5 shadow-lg">
+    <div className="fixed right-[calc(var(--safe-right)+1.5rem)] bottom-[calc(var(--safe-bottom)+6rem)] glass rounded-full w-16 px-2 py-5 shadow-lg">
       <div className="flex flex-col items-center gap-4">
         <input
           ref={fileInputRef}

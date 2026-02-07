@@ -42,7 +42,7 @@ export const ToastContainer: React.FC = () => {
   }, []);
 
   return (
-    <div className="fixed z-[1000] bottom-4 right-4 flex flex-col gap-2">
+    <div className="fixed z-[1000] bottom-[calc(var(--safe-bottom)+1rem)] right-[calc(var(--safe-right)+1rem)] flex flex-col gap-2">
       {toasts.map(t => (
         <div
           key={t.id}
@@ -56,4 +56,3 @@ export const ToastContainer: React.FC = () => {
     </div>
   );
 };
-

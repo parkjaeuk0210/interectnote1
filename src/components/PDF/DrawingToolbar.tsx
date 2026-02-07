@@ -163,7 +163,7 @@ export const MobileDrawingToolbar = ({
   ];
 
   return (
-    <div className="fixed bottom-safe-area left-4 right-4 z-50 sm:hidden">
+    <div className="fixed bottom-[calc(var(--safe-bottom)+1rem)] left-[calc(var(--safe-left)+1rem)] right-[calc(var(--safe-right)+1rem)] z-50 sm:hidden">
       <div className="glass-button rounded-full p-3 flex justify-center items-center gap-4">
         {/* 그리기 모드 토글 */}
         <button

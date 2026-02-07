@@ -227,7 +227,7 @@ export const CanvasList: React.FC<CanvasListProps> = ({ isOpen, onClose }) => {
           isVisible ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'
         }`}
       >
-        <div className="h-full p-6 overflow-y-auto">
+        <div className="h-full px-6 pb-[calc(var(--safe-bottom)+1.5rem)] pt-[calc(var(--safe-top)+1.5rem)] overflow-y-auto">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               내 캔버스

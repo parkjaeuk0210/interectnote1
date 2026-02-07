@@ -35,7 +35,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+    <div className="fixed bottom-[calc(var(--safe-bottom)+1.5rem)] left-1/2 transform -translate-x-1/2 z-50">
       <div className="flex items-center gap-4 bg-white dark:bg-gray-800 rounded-full px-6 py-3 shadow-lg border border-gray-200 dark:border-gray-700">
         {/* 노트 추가 */}
         <button

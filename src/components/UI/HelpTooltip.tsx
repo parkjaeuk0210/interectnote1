@@ -19,7 +19,7 @@ export const HelpTooltip = () => {
   if (!showHelp) return null;
 
   return (
-    <div className="fixed top-6 left-1/2 transform -translate-x-1/2 max-w-sm z-[9999] animate-in fade-in slide-in-from-top-2 duration-500" style={{ pointerEvents: 'auto' }}>
+    <div className="fixed top-[calc(var(--safe-top)+1.5rem)] left-1/2 transform -translate-x-1/2 max-w-sm z-[9999] animate-in fade-in slide-in-from-top-2 duration-500" style={{ pointerEvents: 'auto' }}>
       <div className="enterprise-note enterprise-note-blue rounded-2xl p-6 shadow-xl relative" style={{ pointerEvents: 'auto' }}>
         <button
           onClick={handleClose}
