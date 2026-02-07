@@ -274,7 +274,7 @@ function App() {
         <PwaUpdatePrompt />
         
         {/* Top bar */}
-        <div className="fixed top-[calc(var(--safe-top)+0.75rem)] sm:top-[calc(var(--safe-top)+1.5rem)] left-[calc(var(--safe-left)+0.5rem)] sm:left-[calc(var(--safe-left)+1.5rem)] right-[calc(var(--safe-right)+0.5rem)] sm:right-[calc(var(--safe-right)+1.5rem)] z-50 flex justify-between items-center">
+        <div className="fixed top-[max(var(--safe-top),0.75rem)] sm:top-[max(var(--safe-top),1.5rem)] left-[max(var(--safe-left),0.5rem)] sm:left-[max(var(--safe-left),1.5rem)] right-[max(var(--safe-right),0.5rem)] sm:right-[max(var(--safe-right),1.5rem)] z-50 flex justify-between items-center">
           {/* Left side - Canvas selector, Undo/Redo and Sync status */}
           <div className="flex items-center gap-1 sm:gap-3">
             {user && (
