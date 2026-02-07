@@ -182,7 +182,7 @@ export const useNoteEditor = (
 
   // Render portal outside of Konva context
   const editorKey = note 
-    ? `editor-portal-${note.id}-${note.updatedAt instanceof Date ? note.updatedAt.getTime() : ''}`
+    ? `editor-portal-${note.id}`
     : undefined;
 
   const EditorComponent = isEditing && note ? (
