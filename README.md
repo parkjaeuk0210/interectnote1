@@ -74,4 +74,24 @@ npm run build
 
 이 앱은 PWA로 설치 가능합니다. 모바일 브라우저에서 "홈 화면에 추가"를 통해 네이티브 앱처럼 사용할 수 있습니다. 
 <!-- Trigger rebuild -->
+
+## 🍎 iPhone에 앱으로 설치 (Capacitor)
+
+PWA 대신 iOS 앱(WKWebView)으로 감싸서 내 폰에 설치해볼 수 있습니다.
+
+### 준비물
+- macOS + Xcode 설치
+- (필요 시) CocoaPods 설치: `sudo gem install cocoapods`
+
+### 설치/실행 (처음 1회)
+```bash
+npm install
+npm run ios:add
+npm run ios:open
+```
+
+Xcode에서:
+1) 좌측 상단 실행 타겟을 내 iPhone으로 선택
+2) Signing & Capabilities에서 Team 선택(Apple ID)
+3) Run(▶) 하면 폰에 설치됩니다
  
