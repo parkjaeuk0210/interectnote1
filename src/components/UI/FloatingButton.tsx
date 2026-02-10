@@ -52,8 +52,10 @@ export const FloatingButton = () => {
       const current = viewportRef.current;
       setViewport({
         ...current,
-        x: current.x + vx * dtSec,
-        y: current.y + vy * dtSec,
+        // Joystick semantics: pushing the stick right should move the "camera" right
+        // (i.e., reveal content to the right), which requires moving the stage left.
+        x: current.x - vx * dtSec,
+        y: current.y - vy * dtSec,
       });
     };
     rafRef.current = requestAnimationFrame(tick);
