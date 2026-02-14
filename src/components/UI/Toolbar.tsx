@@ -51,6 +51,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
       return false;
     }
   });
+  const [isZoomLabelActive, setIsZoomLabelActive] = useState(false);
 
   // Zoom drag on the "% label" (right toolbar)
   const zoomRafId = useRef<number | null>(null);
@@ -88,6 +89,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
     e.stopPropagation();
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setIsZoomLabelActive(true);
 
     if (showZoomDragHint) {
       setShowZoomDragHint(false);
@@ -122,7 +124,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
 
     const MIN_SCALE = 0.1;
     const MAX_SCALE = 5;
-    const DRAG_SENSITIVITY = 0.006; // log-scale change per px (higher = faster)
+    const DRAG_SENSITIVITY = 0.01; // log-scale change per px (higher = faster)
 
     const deltaY = e.clientY - drag.startY;
     const targetScaleUnclamped = drag.startScale * Math.exp(-deltaY * DRAG_SENSITIVITY);
@@ -141,6 +143,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
     e.stopPropagation();
     e.preventDefault();
     zoomDragRef.current = null;
+    setIsZoomLabelActive(false);
   }, []);
   
   // ✅ FIX: Monitor storage usage only when dependencies change
@@ -334,10 +337,8 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
 
 		        <div className="flex flex-col items-center gap-0.5 text-xs text-gray-600 leading-tight">
 	          <span
-              className={`select-none cursor-ns-resize relative ${
-                showZoomDragHint
-                  ? 'underline decoration-dotted decoration-gray-400 dark:decoration-gray-500 underline-offset-2'
-                  : ''
+              className={`select-none cursor-ns-resize relative inline-flex items-center justify-center px-2 py-1 rounded-md transition-colors ${
+                isZoomLabelActive ? 'bg-black/5 dark:bg-white/10' : ''
               }`}
               style={{ touchAction: 'none' }}
               onPointerDown={handleZoomLabelPointerDown}
@@ -346,13 +347,17 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
               onPointerCancel={handleZoomLabelPointerUp}
               title="위아래로 드래그해서 확대/축소"
             >
-              {Math.round(viewport.scale * 100)}%
+              <span className="tabular-nums">{Math.round(viewport.scale * 100)}%</span>
               {showZoomDragHint && (
                 <span
                   aria-hidden="true"
-                  className="absolute left-full top-1/2 -translate-y-1/2 ml-0.5 text-[10px] text-gray-400 dark:text-gray-500"
+                  className="absolute left-full top-1/2 -translate-y-1/2 ml-1 text-gray-400 dark:text-gray-500 animate-pulse"
                 >
-                  ↕
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 19V5" />
+                    <path d="M7 10l5-5 5 5" />
+                    <path d="M7 14l5 5 5-5" />
+                  </svg>
                 </span>
               )}
             </span>
