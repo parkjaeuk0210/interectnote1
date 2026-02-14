@@ -339,6 +339,10 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
 	          <span
               className={`select-none cursor-ns-resize relative inline-flex items-center justify-center px-2 py-1 rounded-md transition-colors ${
                 isZoomLabelActive ? 'bg-black/5 dark:bg-white/10' : ''
+              } ${
+                showZoomDragHint
+                  ? 'underline decoration-dotted decoration-gray-400 dark:decoration-gray-500 underline-offset-2'
+                  : ''
               }`}
               style={{ touchAction: 'none' }}
               onPointerDown={handleZoomLabelPointerDown}
@@ -347,19 +351,22 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
               onPointerCancel={handleZoomLabelPointerUp}
               title="위아래로 드래그해서 확대/축소"
             >
-              <span className="tabular-nums">{Math.round(viewport.scale * 100)}%</span>
               {showZoomDragHint && (
                 <span
                   aria-hidden="true"
-                  className="absolute left-full top-1/2 -translate-y-1/2 ml-1 text-gray-400 dark:text-gray-500 animate-pulse"
+                  className="mr-1 text-gray-400 dark:text-gray-500"
                 >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 19V5" />
-                    <path d="M7 10l5-5 5 5" />
-                    <path d="M7 14l5 5 5-5" />
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="9" cy="5" r="1.25" />
+                    <circle cx="15" cy="5" r="1.25" />
+                    <circle cx="9" cy="12" r="1.25" />
+                    <circle cx="15" cy="12" r="1.25" />
+                    <circle cx="9" cy="19" r="1.25" />
+                    <circle cx="15" cy="19" r="1.25" />
                   </svg>
                 </span>
               )}
+              <span className="tabular-nums">{Math.round(viewport.scale * 100)}%</span>
             </span>
 	          {storageUsage > 50 && (
 	            <span
