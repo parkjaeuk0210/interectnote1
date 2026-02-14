@@ -1,9 +1,10 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useAppStore } from '../../contexts/StoreProvider';
 import { ColorPicker } from './ColorPicker';
 import { FileType } from '../../types';
 import { compressImage, getDataUrlSize, formatBytes } from '../../utils/imageCompression';
 import { getLocalStorageUsagePercent, isLocalStorageNearLimit } from '../../utils/storageUtils';
+import { isMobile } from '../../utils/device';
 import { useAuth } from '../../contexts/AuthContext';
 import { ShareModal } from '../Sharing/ShareModal';
 import { useSharedCanvasStore } from '../../store/sharedCanvasStore';
@@ -17,6 +18,9 @@ interface ToolbarProps {
 }
 
 export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators }: ToolbarProps) => {
+  const isMobileDevice = useMemo(() => isMobile(), []);
+  const zoomDragHintKey = 'interectnote-zoomdrag-hint-seen';
+
   const { user } = useAuth();
   const notes = useAppStore((state) => state.notes);
   const selectedNoteId = useAppStore((state) => state.selectedNoteId);
@@ -27,6 +31,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
   const deleteFile = useAppStore((state) => state.deleteFile);
   const clearCanvas = useAppStore((state) => state.clearCanvas);
   const viewport = useAppStore((state) => state.viewport);
+  const setViewport = useAppStore((state) => state.setViewport);
   const updateNote = useAppStore((state) => state.updateNote);
   const addImage = useAppStore((state) => state.addImage);
   const addFile = useAppStore((state) => state.addFile);
@@ -38,6 +43,105 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
   const [storageUsage, setStorageUsage] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
   const { participants } = useSharedCanvasStore();
+  const [showZoomDragHint, setShowZoomDragHint] = useState<boolean>(() => {
+    if (!isMobileDevice) return false;
+    try {
+      return !localStorage.getItem(zoomDragHintKey);
+    } catch {
+      return false;
+    }
+  });
+
+  // Zoom drag on the "% label" (right toolbar)
+  const zoomRafId = useRef<number | null>(null);
+  const pendingViewportRef = useRef<{ x: number; y: number; scale: number } | null>(null);
+  const zoomDragRef = useRef<{
+    pointerId: number;
+    startY: number;
+    startScale: number;
+    center: { x: number; y: number };
+    fixedPoint: { x: number; y: number };
+  } | null>(null);
+
+  const scheduleViewportUpdate = useCallback((nextViewport: { x: number; y: number; scale: number }) => {
+    pendingViewportRef.current = nextViewport;
+    if (zoomRafId.current != null) return;
+
+    zoomRafId.current = requestAnimationFrame(() => {
+      if (pendingViewportRef.current) {
+        setViewport(pendingViewportRef.current);
+        pendingViewportRef.current = null;
+      }
+      zoomRafId.current = null;
+    });
+  }, [setViewport]);
+
+  useEffect(() => {
+    return () => {
+      if (zoomRafId.current != null) {
+        cancelAnimationFrame(zoomRafId.current);
+      }
+    };
+  }, []);
+
+  const handleZoomLabelPointerDown = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+
+    if (showZoomDragHint) {
+      setShowZoomDragHint(false);
+      try {
+        localStorage.setItem(zoomDragHintKey, 'true');
+      } catch {
+        // ignore
+      }
+    }
+
+    const center = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    const fixedPoint = {
+      x: (center.x - viewport.x) / viewport.scale,
+      y: (center.y - viewport.y) / viewport.scale,
+    };
+
+    zoomDragRef.current = {
+      pointerId: e.pointerId,
+      startY: e.clientY,
+      startScale: viewport.scale,
+      center,
+      fixedPoint,
+    };
+  }, [showZoomDragHint, viewport.scale, viewport.x, viewport.y]);
+
+  const handleZoomLabelPointerMove = useCallback((e: React.PointerEvent) => {
+    const drag = zoomDragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+
+    e.stopPropagation();
+    e.preventDefault();
+
+    const MIN_SCALE = 0.1;
+    const MAX_SCALE = 5;
+    const DRAG_SENSITIVITY = 0.006; // log-scale change per px (higher = faster)
+
+    const deltaY = e.clientY - drag.startY;
+    const targetScaleUnclamped = drag.startScale * Math.exp(-deltaY * DRAG_SENSITIVITY);
+    const targetScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, targetScaleUnclamped));
+
+    scheduleViewportUpdate({
+      scale: targetScale,
+      x: drag.center.x - drag.fixedPoint.x * targetScale,
+      y: drag.center.y - drag.fixedPoint.y * targetScale,
+    });
+  }, [scheduleViewportUpdate]);
+
+  const handleZoomLabelPointerUp = useCallback((e: React.PointerEvent) => {
+    const drag = zoomDragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    e.stopPropagation();
+    e.preventDefault();
+    zoomDragRef.current = null;
+  }, []);
   
   // ✅ FIX: Monitor storage usage only when dependencies change
   // No need for setInterval since we already have dependencies tracking changes
@@ -228,8 +332,30 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
           </>
 	        )}
 
-	        <div className="flex flex-col items-center gap-0.5 text-xs text-gray-600 leading-tight">
-	          <span>{Math.round(viewport.scale * 100)}%</span>
+		        <div className="flex flex-col items-center gap-0.5 text-xs text-gray-600 leading-tight">
+	          <span
+              className={`select-none cursor-ns-resize relative ${
+                showZoomDragHint
+                  ? 'underline decoration-dotted decoration-gray-400 dark:decoration-gray-500 underline-offset-2'
+                  : ''
+              }`}
+              style={{ touchAction: 'none' }}
+              onPointerDown={handleZoomLabelPointerDown}
+              onPointerMove={handleZoomLabelPointerMove}
+              onPointerUp={handleZoomLabelPointerUp}
+              onPointerCancel={handleZoomLabelPointerUp}
+              title="위아래로 드래그해서 확대/축소"
+            >
+              {Math.round(viewport.scale * 100)}%
+              {showZoomDragHint && (
+                <span
+                  aria-hidden="true"
+                  className="absolute left-full top-1/2 -translate-y-1/2 ml-0.5 text-[10px] text-gray-400 dark:text-gray-500"
+                >
+                  ↕
+                </span>
+              )}
+            </span>
 	          {storageUsage > 50 && (
 	            <span
 	              className={`${storageUsage > 80 ? 'text-red-500' : 'text-orange-500'}`}
