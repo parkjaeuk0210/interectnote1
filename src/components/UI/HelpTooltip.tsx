@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { isMobile } from '../../utils/device';
 
 export const HelpTooltip = () => {
   const [showHelp, setShowHelp] = useState(true);
+  const isMobileDevice = useMemo(() => isMobile(), []);
 
   useEffect(() => {
     // Check if user has seen the help before
@@ -50,7 +52,11 @@ export const HelpTooltip = () => {
             <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-xs">2</span>
             </div>
-            <p className="text-sm text-gray-700">빈 공간 드래그로 캔버스 이동, 휠로 확대/축소</p>
+            <p className="text-sm text-gray-700">
+              {isMobileDevice
+                ? '빈 공간 드래그로 캔버스 이동, 핀치 또는 오른쪽 100% 드래그로 확대/축소'
+                : '빈 공간 드래그로 캔버스 이동, 휠로 확대/축소'}
+            </p>
           </div>
           
           <div className="flex items-start gap-3">

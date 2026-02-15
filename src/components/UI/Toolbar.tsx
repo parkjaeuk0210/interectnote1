@@ -335,13 +335,14 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
           </>
 	        )}
 
-		        <div className="flex flex-col items-center gap-0.5 text-xs text-gray-600 leading-tight">
-	          <span
-              className={`select-none cursor-ns-resize relative inline-flex items-center justify-center px-2 py-1 rounded-md transition-colors ${
+			        <div className="flex flex-col items-center gap-0.5 text-xs text-gray-600 leading-tight">
+	          <button
+              type="button"
+              className={`select-none cursor-ns-resize relative flex w-full min-h-10 items-center justify-center gap-1 px-2 py-2 rounded-md transition-colors focus:outline-none ${
                 isZoomLabelActive ? 'bg-black/5 dark:bg-white/10' : ''
               } ${
                 showZoomDragHint
-                  ? 'underline decoration-dotted decoration-gray-400 dark:decoration-gray-500 underline-offset-2'
+                  ? 'ring-1 ring-black/10 dark:ring-white/15'
                   : ''
               }`}
               style={{ touchAction: 'none' }}
@@ -349,25 +350,26 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
               onPointerMove={handleZoomLabelPointerMove}
               onPointerUp={handleZoomLabelPointerUp}
               onPointerCancel={handleZoomLabelPointerUp}
+              aria-label="확대/축소. 위아래로 드래그"
               title="위아래로 드래그해서 확대/축소"
             >
-              {showZoomDragHint && (
-                <span
-                  aria-hidden="true"
-                  className="mr-1 text-gray-400 dark:text-gray-500"
-                >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="9" cy="5" r="1.25" />
-                    <circle cx="15" cy="5" r="1.25" />
-                    <circle cx="9" cy="12" r="1.25" />
-                    <circle cx="15" cy="12" r="1.25" />
-                    <circle cx="9" cy="19" r="1.25" />
-                    <circle cx="15" cy="19" r="1.25" />
-                  </svg>
-                </span>
-              )}
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none text-gray-400 dark:text-gray-500 transition-opacity ${
+                  showZoomDragHint ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="9" cy="5" r="1.25" />
+                  <circle cx="15" cy="5" r="1.25" />
+                  <circle cx="9" cy="12" r="1.25" />
+                  <circle cx="15" cy="12" r="1.25" />
+                  <circle cx="9" cy="19" r="1.25" />
+                  <circle cx="15" cy="19" r="1.25" />
+                </svg>
+              </span>
               <span className="tabular-nums">{Math.round(viewport.scale * 100)}%</span>
-            </span>
+            </button>
 	          {storageUsage > 50 && (
 	            <span
 	              className={`${storageUsage > 80 ? 'text-red-500' : 'text-orange-500'}`}
