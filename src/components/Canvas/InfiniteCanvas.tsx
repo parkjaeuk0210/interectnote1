@@ -15,6 +15,7 @@ import { getPerformanceMode } from '../../utils/device';
 export const InfiniteCanvas = React.memo(() => {
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const backgroundUnmountTimerRef = useRef<number | null>(null);
 
   type VisibleRect = { left: number; top: number; right: number; bottom: number };
   
@@ -58,6 +59,10 @@ export const InfiniteCanvas = React.memo(() => {
   // Check if any note is currently being resized or dragged
   const [isAnyNoteResizing, setIsAnyNoteResizing] = useState(false);
   const [isAnyNoteDragging, setIsAnyNoteDragging] = useState(false);
+
+  // Unmount the Konva stage after the app has been backgrounded for a bit.
+  // This reduces memory pressure on iOS PWAs and can prevent the OS from killing the app.
+  const [shouldRenderStage, setShouldRenderStage] = useState(true);
 
   const scale = useMemo(() => Math.max(0.0001, viewport.scale || 1), [viewport.scale]);
 
@@ -107,6 +112,36 @@ export const InfiniteCanvas = React.memo(() => {
   // Editor state
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const editingNote = notes.find(note => note.id === editingNoteId);
+
+  useEffect(() => {
+    const BACKGROUND_CANVAS_UNMOUNT_MS = 1_500;
+
+    if (isAppVisible) {
+      if (backgroundUnmountTimerRef.current !== null) {
+        window.clearTimeout(backgroundUnmountTimerRef.current);
+        backgroundUnmountTimerRef.current = null;
+      }
+      setShouldRenderStage(true);
+      return;
+    }
+
+    if (backgroundUnmountTimerRef.current !== null) {
+      window.clearTimeout(backgroundUnmountTimerRef.current);
+    }
+    backgroundUnmountTimerRef.current = window.setTimeout(() => {
+      setEditingNoteId(null);
+      setShouldRenderStage(false);
+      backgroundUnmountTimerRef.current = null;
+    }, BACKGROUND_CANVAS_UNMOUNT_MS);
+
+    return () => {
+      if (backgroundUnmountTimerRef.current !== null) {
+        window.clearTimeout(backgroundUnmountTimerRef.current);
+        backgroundUnmountTimerRef.current = null;
+      }
+    };
+  }, [isAppVisible]);
+
   const { isEditing, startEditing, EditorComponent } = useNoteEditor(
     stageRef,
     editingNote || null,
@@ -203,39 +238,41 @@ export const InfiniteCanvas = React.memo(() => {
       userSelect: 'none',
       cursor: isCanvasDragging ? 'grabbing' : 'grab',
     }}>
-      <Stage
-        ref={stageRef}
-        width={dimensions.width}
-        height={dimensions.height}
-        onClick={handleStageClick}
-        onDblClick={handleStageDoubleClick}
-        x={viewport.x}
-        y={viewport.y}
-        scaleX={viewport.scale}
-        scaleY={viewport.scale}
-        // Restore original click/drag behavior: keep hit-testing on for desktop, and
-        // only disable it during panning on low-performance devices.
-        listening={!isCanvasDragging || performanceMode !== 'low'}
-        perfectDrawEnabled={stagePerfectDrawEnabled}
-        pixelRatio={stagePixelRatio}
-      >
-        <CanvasItems
-          notes={notes}
-          images={images}
-          files={files}
-          editingNoteId={editingNoteId}
-          selectedNoteId={selectedNoteId}
-          selectedImageId={selectedImageId}
-          selectedFileId={selectedFileId}
-          selectImage={selectImage}
-          selectFile={selectFile}
-          setEditingNoteId={setEditingNoteId}
-          setIsAnyNoteResizing={setIsAnyNoteResizing}
-          setIsAnyNoteDragging={setIsAnyNoteDragging}
-          visibleRect={cullRect}
-        />
-      </Stage>
-      {EditorComponent}
+      {shouldRenderStage && (
+        <Stage
+          ref={stageRef}
+          width={dimensions.width}
+          height={dimensions.height}
+          onClick={handleStageClick}
+          onDblClick={handleStageDoubleClick}
+          x={viewport.x}
+          y={viewport.y}
+          scaleX={viewport.scale}
+          scaleY={viewport.scale}
+          // Restore original click/drag behavior: keep hit-testing on for desktop, and
+          // only disable it during panning on low-performance devices.
+          listening={!isCanvasDragging || performanceMode !== 'low'}
+          perfectDrawEnabled={stagePerfectDrawEnabled}
+          pixelRatio={stagePixelRatio}
+        >
+          <CanvasItems
+            notes={notes}
+            images={images}
+            files={files}
+            editingNoteId={editingNoteId}
+            selectedNoteId={selectedNoteId}
+            selectedImageId={selectedImageId}
+            selectedFileId={selectedFileId}
+            selectImage={selectImage}
+            selectFile={selectFile}
+            setEditingNoteId={setEditingNoteId}
+            setIsAnyNoteResizing={setIsAnyNoteResizing}
+            setIsAnyNoteDragging={setIsAnyNoteDragging}
+            visibleRect={cullRect}
+          />
+        </Stage>
+      )}
+      {shouldRenderStage && EditorComponent}
     </div>
   );
 });

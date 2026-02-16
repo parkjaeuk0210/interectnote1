@@ -4,7 +4,6 @@ import { Toolbar } from './components/UI/Toolbar';
 import { FloatingButton } from './components/UI/FloatingButton';
 import { HelpTooltip } from './components/UI/HelpTooltip';
 import { ToastContainer } from './components/UI/ToastContainer';
-import { PwaUpdatePrompt } from './components/UI/PwaUpdatePrompt';
 import { DarkModeToggle } from './components/UI/DarkModeToggle';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CanvasErrorBoundary } from './components/CanvasErrorBoundary';
@@ -271,7 +270,6 @@ function App() {
         <FloatingButton />
         <HelpTooltip />
         <ToastContainer />
-        <PwaUpdatePrompt />
         
         {/* Top bar */}
         <div className="fixed top-[max(var(--safe-top),0.75rem)] sm:top-[max(var(--safe-top),1.5rem)] left-[max(var(--safe-left),0.5rem)] sm:left-[max(var(--safe-left),1.5rem)] right-[max(var(--safe-right),0.5rem)] sm:right-[max(var(--safe-right),1.5rem)] z-50 flex justify-between items-center">

@@ -103,6 +103,12 @@ export const useNoteEditor = (
   const [editorPosition, setEditorPosition] = useState({ x: 0, y: 0 });
   const [stageScale, setStageScale] = useState(1);
 
+  useEffect(() => {
+    if (isEditing && !note) {
+      setIsEditing(false);
+    }
+  }, [isEditing, note]);
+
   const updateEditorPosition = useCallback(() => {
     if (!note || !stageRef.current) return;
 

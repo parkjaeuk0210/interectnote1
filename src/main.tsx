@@ -7,7 +7,6 @@ import { isMacOS, isMobile } from './utils/device'
 // Register service worker (vite-plugin-pwa)
 // eslint-disable-next-line import/no-unresolved
 import { registerSW } from 'virtual:pwa-register'
-import { usePwaUpdateStore } from './store/pwaUpdateStore'
 
 let swRegistration: ServiceWorkerRegistration | undefined
 
@@ -21,20 +20,12 @@ if (typeof window !== 'undefined') {
   }
 }
 
-const updateSW = registerSW({
+registerSW({
   immediate: true,
-  onNeedRefresh() {
-    usePwaUpdateStore.getState().setNeedRefresh(true)
-  },
-  onOfflineReady() {
-    usePwaUpdateStore.getState().setOfflineReady(true)
-  },
   onRegisteredSW(_swScriptUrl, registration) {
     swRegistration = registration
   },
 })
-
-usePwaUpdateStore.getState().setUpdateServiceWorker(updateSW)
 
 if (typeof window !== 'undefined') {
   const CHECK_COOLDOWN_MS = 60_000
