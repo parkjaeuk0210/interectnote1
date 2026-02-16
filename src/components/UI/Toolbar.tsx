@@ -62,7 +62,26 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
     startScale: number;
     center: { x: number; y: number };
     fixedPoint: { x: number; y: number };
+    didMove: boolean;
+    tapZone: 'in' | 'out';
   } | null>(null);
+
+  const applyZoomFromCenter = useCallback((newScale: number) => {
+    const MIN_SCALE = 0.1;
+    const MAX_SCALE = 5;
+    const clamped = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    const pointX = (cx - viewport.x) / viewport.scale;
+    const pointY = (cy - viewport.y) / viewport.scale;
+
+    setViewport({
+      scale: clamped,
+      x: cx - pointX * clamped,
+      y: cy - pointY * clamped,
+    });
+  }, [setViewport, viewport.scale, viewport.x, viewport.y]);
 
   const scheduleViewportUpdate = useCallback((nextViewport: { x: number; y: number; scale: number }) => {
     pendingViewportRef.current = nextViewport;
@@ -100,6 +119,9 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
       }
     }
 
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const tapZone = e.clientY < rect.top + rect.height / 2 ? 'in' : 'out';
+
     const center = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     const fixedPoint = {
       x: (center.x - viewport.x) / viewport.scale,
@@ -112,6 +134,8 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
       startScale: viewport.scale,
       center,
       fixedPoint,
+      didMove: false,
+      tapZone,
     };
   }, [showZoomDragHint, viewport.scale, viewport.x, viewport.y]);
 
@@ -125,9 +149,17 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
     const MIN_SCALE = 0.1;
     const MAX_SCALE = 5;
     const DRAG_SENSITIVITY = 0.01; // log-scale change per px (higher = faster)
+    const TAP_MOVE_THRESHOLD_PX = 6;
 
     const deltaY = e.clientY - drag.startY;
-    const targetScaleUnclamped = drag.startScale * Math.exp(-deltaY * DRAG_SENSITIVITY);
+    if (!drag.didMove) {
+      if (Math.abs(deltaY) < TAP_MOVE_THRESHOLD_PX) return;
+      drag.didMove = true;
+      drag.startY = e.clientY;
+    }
+
+    const activeDeltaY = e.clientY - drag.startY;
+    const targetScaleUnclamped = drag.startScale * Math.exp(-activeDeltaY * DRAG_SENSITIVITY);
     const targetScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, targetScaleUnclamped));
 
     scheduleViewportUpdate({
@@ -142,9 +174,18 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
     if (!drag || drag.pointerId !== e.pointerId) return;
     e.stopPropagation();
     e.preventDefault();
+
+    if (!drag.didMove) {
+      const STEP_RATIO = 1.12;
+      const nextScale = drag.tapZone === 'in'
+        ? viewport.scale * STEP_RATIO
+        : viewport.scale / STEP_RATIO;
+      applyZoomFromCenter(nextScale);
+    }
+
     zoomDragRef.current = null;
     setIsZoomLabelActive(false);
-  }, []);
+  }, [applyZoomFromCenter, viewport.scale]);
   
   // ✅ FIX: Monitor storage usage only when dependencies change
   // No need for setInterval since we already have dependencies tracking changes
@@ -335,10 +376,10 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
           </>
 	        )}
 
-			        <div className="flex flex-col items-center gap-0.5 text-xs text-gray-600 leading-tight">
+		        <div className="flex flex-col items-center gap-0.5 text-xs text-gray-600 leading-tight">
 	          <button
               type="button"
-              className={`select-none cursor-ns-resize relative flex w-full min-h-10 items-center justify-center gap-1 px-2 py-2 rounded-md transition-colors focus:outline-none ${
+              className={`glass-button text-gray-700 dark:text-gray-200 select-none cursor-ns-resize relative flex w-full min-h-12 items-center justify-center gap-1 px-2 py-2 rounded-full transition-colors focus:outline-none active:scale-[0.98] ${
                 isZoomLabelActive ? 'bg-black/5 dark:bg-white/10' : ''
               } ${
                 showZoomDragHint
@@ -350,14 +391,28 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
               onPointerMove={handleZoomLabelPointerMove}
               onPointerUp={handleZoomLabelPointerUp}
               onPointerCancel={handleZoomLabelPointerUp}
-              aria-label="확대/축소. 위아래로 드래그"
+              aria-label="확대/축소. 위아래로 드래그하거나 위/아래를 탭"
               title="위아래로 드래그해서 확대/축소"
             >
+              {showZoomDragHint && (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-1.5 left-1/2 -translate-x-1/2 text-[10px] text-gray-400 dark:text-gray-500"
+                  >
+                    +
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] text-gray-400 dark:text-gray-500"
+                  >
+                    −
+                  </span>
+                </>
+              )}
               <span
                 aria-hidden="true"
-                className={`pointer-events-none text-gray-400 dark:text-gray-500 transition-opacity ${
-                  showZoomDragHint ? 'opacity-100' : 'opacity-0'
-                }`}
+                className={`pointer-events-none text-gray-400 dark:text-gray-500 transition-opacity ${showZoomDragHint ? 'opacity-100' : 'opacity-35'}`}
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
                   <circle cx="9" cy="5" r="1.25" />
