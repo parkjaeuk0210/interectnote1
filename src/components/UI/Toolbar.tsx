@@ -379,7 +379,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
 		        <div className="flex flex-col items-center gap-0.5 text-xs text-gray-600 leading-tight">
 	          <button
               type="button"
-              className={`glass-button text-gray-700 dark:text-gray-200 select-none cursor-ns-resize relative flex w-full min-h-12 items-center justify-center gap-1 px-2 py-2 rounded-full transition-colors focus:outline-none active:scale-[0.98] ${
+              className={`glass-button text-gray-700 dark:text-gray-200 select-none cursor-ns-resize relative flex w-full min-h-12 items-center justify-center px-2 py-2 rounded-full transition-colors focus:outline-none active:scale-[0.98] ${
                 isZoomLabelActive ? 'bg-black/5 dark:bg-white/10' : ''
               } ${
                 showZoomDragHint
@@ -412,7 +412,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
               )}
               <span
                 aria-hidden="true"
-                className={`pointer-events-none text-gray-400 dark:text-gray-500 transition-opacity ${showZoomDragHint ? 'opacity-100' : 'opacity-35'}`}
+                className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 transition-opacity ${showZoomDragHint ? 'opacity-100' : 'opacity-35'}`}
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
                   <circle cx="9" cy="5" r="1.25" />
@@ -423,7 +423,7 @@ export const Toolbar = ({ isSharedMode, showCollaborators, onToggleCollaborators
                   <circle cx="15" cy="19" r="1.25" />
                 </svg>
               </span>
-              <span className="tabular-nums">{Math.round(viewport.scale * 100)}%</span>
+              <span className="w-full text-center tabular-nums">{Math.round(viewport.scale * 100)}%</span>
             </button>
 	          {storageUsage > 50 && (
 	            <span
