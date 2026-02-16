@@ -29,6 +29,7 @@ export default defineConfig({
       includeAssets: ['icon-192.png', 'icon-512.png', 'icon-512.svg'],
       workbox: {
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,json}'],
+        globIgnores: ['**/pdf.worker.min-*.mjs'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/(api|__)/],
         runtimeCaching: [
@@ -40,6 +41,17 @@ export default defineConfig({
               expiration: {
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24 * 7
+              }
+            }
+          },
+          {
+            urlPattern: /\/assets\/pdf\.worker\.min-.*\.mjs$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'pdf-worker-cache',
+              expiration: {
+                maxEntries: 1,
+                maxAgeSeconds: 60 * 60 * 24 * 365
               }
             }
           }

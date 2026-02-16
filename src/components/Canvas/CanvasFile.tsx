@@ -1,9 +1,12 @@
-import { useRef, useState } from 'react';
+import { Suspense, lazy, useRef, useState } from 'react';
 import { Group, Rect, Text } from 'react-konva';
 import Konva from 'konva';
 import { CanvasFile as CanvasFileType } from '../../types';
 import { useAppStore } from '../../contexts/StoreProvider';
-import { PDFCanvas } from '../PDF/PDFCanvas';
+
+const LazyPDFCanvas = lazy(() =>
+  import('../PDF/PDFCanvas').then((m) => ({ default: m.PDFCanvas })),
+);
 
 interface CanvasFileProps {
   file: CanvasFileType;
@@ -18,17 +21,6 @@ export const CanvasFile = ({
   onSelect,
   onDraggingChange
 }: CanvasFileProps) => {
-  // PDF 파일은 PDFCanvas로 렌더링
-  if (file.fileType === 'pdf') {
-    return (
-      <PDFCanvas
-        file={file}
-        isSelected={isSelected}
-        onSelect={onSelect}
-        onDraggingChange={onDraggingChange}
-      />
-    );
-  }
   const groupRef = useRef<Konva.Group>(null);
   const [isDragging, setIsDragging] = useState(false);
   
@@ -103,15 +95,15 @@ export const CanvasFile = ({
     return truncatedName + '.' + ext;
   };
 
-	  return (
-	    <Group
-	      ref={groupRef}
-	      x={file.x}
-	      y={file.y}
-	      draggable
-	      onDragStart={handleDragStart}
-	      onDragEnd={handleDragEnd}
-	      onClick={handleClick}
+  const fileCard = (
+    <Group
+      ref={groupRef}
+      x={file.x}
+      y={file.y}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onClick={handleClick}
       onTap={handleClick}
       onDblClick={handleDoubleClick}
       onDblTap={handleDoubleClick}
@@ -232,4 +224,19 @@ export const CanvasFile = ({
       />
     </Group>
   );
+
+  if (file.fileType === 'pdf') {
+    return (
+      <Suspense fallback={fileCard}>
+        <LazyPDFCanvas
+          file={file}
+          isSelected={isSelected}
+          onSelect={onSelect}
+          onDraggingChange={onDraggingChange}
+        />
+      </Suspense>
+    );
+  }
+
+  return fileCard;
 };
