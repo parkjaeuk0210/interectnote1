@@ -2,7 +2,6 @@ import {
   ref, 
   set, 
   onValue, 
-  off, 
   push, 
   remove, 
   update,
@@ -418,8 +417,8 @@ export const subscribeToSharedCanvas = (
   const unsubscribe = onValue(canvasRef, (snapshot: DataSnapshot) => {
     callback(snapshot.val());
   });
-  
-  return () => off(canvasRef, 'value', unsubscribe);
+
+  return () => unsubscribe();
 };
 
 // Subscribe to shared notes
@@ -432,8 +431,8 @@ export const subscribeToSharedNotes = (
     const data = snapshot.val() || {};
     callback(data);
   });
-  
-  return () => off(notesRef, 'value', unsubscribe);
+
+  return () => unsubscribe();
 };
 
 // Subscribe to shared images
@@ -446,8 +445,8 @@ export const subscribeToSharedImages = (
     const data = snapshot.val() || {};
     callback(data);
   });
-  
-  return () => off(imagesRef, 'value', unsubscribe);
+
+  return () => unsubscribe();
 };
 
 // Subscribe to shared files
@@ -460,8 +459,8 @@ export const subscribeToSharedFiles = (
     const data = snapshot.val() || {};
     callback(data);
   });
-  
-  return () => off(filesRef, 'value', unsubscribe);
+
+  return () => unsubscribe();
 };
 
 // Subscribe to presence updates
@@ -474,8 +473,8 @@ export const subscribeToPresence = (
     const data = snapshot.val() || {};
     callback(data);
   });
-  
-  return () => off(presenceRef, 'value', unsubscribe);
+
+  return () => unsubscribe();
 };
 
 // CRUD operations for shared canvas items
