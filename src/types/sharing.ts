@@ -6,6 +6,7 @@ export interface CanvasParticipant {
   displayName?: string;
   photoURL?: string;
   role: ParticipantRole;
+  inviteToken?: string;
   joinedAt: number;
   lastActiveAt: number;
   isOnline?: boolean;

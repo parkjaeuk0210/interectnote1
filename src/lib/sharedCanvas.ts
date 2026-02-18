@@ -247,11 +247,13 @@ export const joinSharedCanvas = async (
   const currentParticipants = canvasData.participants || {};
   const existingParticipant = currentParticipants[userId];
   if (existingParticipant) {
-    // Update role if token grants higher privileges than current assignment
-    if (existingParticipant.role !== tokenData.role) {
+    // Upgrade role if the share token grants higher privileges than current assignment.
+    // (Do not downgrade existing editors if they open a viewer link.)
+    if (existingParticipant.role === 'viewer' && tokenData.role === 'editor') {
       const participantRef = ref(database, `${getParticipantsPath(tokenData.canvasId)}/${userId}`);
       await update(participantRef, {
-        role: tokenData.role,
+        role: 'editor',
+        inviteToken: token,
         lastActiveAt: Date.now(),
       });
 
@@ -260,7 +262,7 @@ export const joinSharedCanvas = async (
         `${getUserSharedCanvasesPath(userId)}/${tokenData.canvasId}`
       );
       await update(userCanvasRef, {
-        role: tokenData.role,
+        role: 'editor',
         joinedAt: existingParticipant.joinedAt ?? Date.now(),
       });
     }
@@ -300,6 +302,7 @@ export const joinSharedCanvas = async (
     userId,
     email: userEmail,
     role: tokenData.role,
+    inviteToken: token,
     joinedAt: Date.now(),
     lastActiveAt: Date.now(),
     isOnline: true,

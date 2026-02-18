@@ -17,7 +17,7 @@
         ".write": "(auth != null) && ((!data.exists() && newData.child('owner').val() === auth.uid) || (data.exists() && data.child('owner').val() === auth.uid))",
         "participants": {
           "$participantId": {
-            ".write": "auth != null && (root.child('shared_canvases').child($canvasId).child('owner').val() === auth.uid || ($participantId === auth.uid && (!data.exists() || newData.child('role').val() === data.child('role').val())))"
+            ".write": "auth != null && (root.child('shared_canvases').child($canvasId).child('owner').val() === auth.uid || ($participantId === auth.uid && ((!newData.exists() && root.child('shared_canvases').child($canvasId).child('owner').val() !== auth.uid) || (newData.exists() && ((data.exists() && newData.child('role').val() === data.child('role').val()) || (data.exists() && data.child('role').val() === 'viewer' && newData.child('role').val() === 'editor' && newData.child('inviteToken').isString() && root.child('share_tokens').child(newData.child('inviteToken').val()).child('canvasId').val() === $canvasId && root.child('share_tokens').child(newData.child('inviteToken').val()).child('role').val() === 'editor' && (!root.child('share_tokens').child(newData.child('inviteToken').val()).child('expiresAt').exists() || root.child('share_tokens').child(newData.child('inviteToken').val()).child('expiresAt').val() > now)) || (!data.exists() && newData.child('inviteToken').isString() && newData.child('userId').val() === auth.uid && root.child('share_tokens').child(newData.child('inviteToken').val()).child('canvasId').val() === $canvasId && root.child('share_tokens').child(newData.child('inviteToken').val()).child('role').val() === newData.child('role').val() && (!root.child('share_tokens').child(newData.child('inviteToken').val()).child('expiresAt').exists() || root.child('share_tokens').child(newData.child('inviteToken').val()).child('expiresAt').val() > now)))))))"
           }
         },
         "notes": {
@@ -48,7 +48,7 @@
     "share_tokens": {
       "$token": {
         ".read": "auth != null",
-        ".write": "(auth != null) && ((!data.exists() && newData.child('createdBy').val() === auth.uid) || (data.exists() && data.child('createdBy').val() === auth.uid))",
+        ".write": "(auth != null) && ((!data.exists() && newData.child('createdBy').val() === auth.uid && root.child('shared_canvases').child(newData.child('canvasId').val()).child('owner').val() === auth.uid) || (data.exists() && data.child('createdBy').val() === auth.uid))",
         ".validate": "newData.hasChildren(['canvasId','createdBy','createdAt','role']) && (newData.child('role').val() === 'viewer' || newData.child('role').val() === 'editor')"
       }
     }
