@@ -46,6 +46,8 @@ const getSharedFilesPath = (canvasId: string) => `${getSharedCanvasPath(canvasId
 const getParticipantsPath = (canvasId: string) => `${getSharedCanvasPath(canvasId)}/participants`;
 const getPresencePath = (canvasId: string) => `${getSharedCanvasPath(canvasId)}/presence`;
 const getShareTokenPath = (token: string) => `share_tokens/${token}`;
+const getParticipantTokenPath = (canvasId: string, userId: string) =>
+  `participant_tokens/${canvasId}/${userId}`;
 
 const presenceSessionUnsubscribers = new Map<string, () => void>();
 
@@ -250,10 +252,12 @@ export const joinSharedCanvas = async (
     // Upgrade role if the share token grants higher privileges than current assignment.
     // (Do not downgrade existing editors if they open a viewer link.)
     if (existingParticipant.role === 'viewer' && tokenData.role === 'editor') {
+      const participantTokenRef = ref(database, getParticipantTokenPath(tokenData.canvasId, userId));
+      await set(participantTokenRef, token);
+
       const participantRef = ref(database, `${getParticipantsPath(tokenData.canvasId)}/${userId}`);
       await update(participantRef, {
         role: 'editor',
-        inviteToken: token,
         lastActiveAt: Date.now(),
       });
 
@@ -302,7 +306,6 @@ export const joinSharedCanvas = async (
     userId,
     email: userEmail,
     role: tokenData.role,
-    inviteToken: token,
     joinedAt: Date.now(),
     lastActiveAt: Date.now(),
     isOnline: true,
@@ -316,6 +319,9 @@ export const joinSharedCanvas = async (
   if (photoURL) {
     participant.photoURL = photoURL;
   }
+
+  const participantTokenRef = ref(database, getParticipantTokenPath(tokenData.canvasId, userId));
+  await set(participantTokenRef, token);
 
   const participantRef = ref(database, `${getParticipantsPath(tokenData.canvasId)}/${userId}`);
   await set(participantRef, participant);
@@ -386,6 +392,10 @@ export const removeParticipant = async (
   // Remove presence data
   const presenceRef = ref(database, `${getPresencePath(canvasId)}/${participantId}`);
   await remove(presenceRef);
+
+  // Remove stored participant token so kicked users can't silently rejoin.
+  const participantTokenRef = ref(database, getParticipantTokenPath(canvasId, participantId));
+  await remove(participantTokenRef);
 };
 
 // Update participant role
@@ -638,6 +648,10 @@ export const leaveSharedCanvas = async (userId: string, canvasId: string) => {
   // Remove from presence
   const presenceRef = ref(database, `${getPresencePath(canvasId)}/${userId}`);
   await remove(presenceRef);
+
+  // Remove stored participant token so leaving users don't keep implicit access.
+  const participantTokenRef = ref(database, getParticipantTokenPath(canvasId, userId));
+  await remove(participantTokenRef);
   
   // Remove from user's canvas list
   const userCanvasRef = ref(database, `${getUserSharedCanvasesPath(userId)}/${canvasId}`);
