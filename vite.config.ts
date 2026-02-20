@@ -24,43 +24,16 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'prompt',
       manifest: false,
       includeAssets: ['icon-192.png', 'icon-512.png', 'icon-512.svg'],
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,json}'],
         globIgnores: ['**/pdf.worker.min-*.mjs'],
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/(api|__)/],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.firebaseio\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'firebase-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 7
-              }
-            }
-          },
-          {
-            urlPattern: /\/assets\/pdf\.worker\.min-.*\.mjs$/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'pdf-worker-cache',
-              expiration: {
-                maxEntries: 1,
-                maxAgeSeconds: 60 * 60 * 24 * 365
-              }
-            }
-          }
-        ],
-        // Use prompt-based updates so installed PWA users can control reload timing.
-        // (Also avoids unexpected reloads during editing.)
-        skipWaiting: false,
-        clientsClaim: true
-      }
+      },
     })
   ],
   server: {
