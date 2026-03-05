@@ -158,6 +158,9 @@ export const InfiniteCanvas = React.memo(() => {
   
   // Temporary canvas dragging state
   const [isCanvasDragging, setIsCanvasDragging] = useState(false);
+  // Suppress note creation after panning on desktop (Windows can emit spurious dblclick during drag)
+  const suppressAddNoteUntilRef = useRef<number>(0);
+  const wasCanvasDraggingRef = useRef(false);
   
   // Viewport manager
   const { updateViewportRAF, cleanup } = useViewportManager({
@@ -184,7 +187,20 @@ export const InfiniteCanvas = React.memo(() => {
   
   // Update canvas dragging state
   useEffect(() => {
-    setIsCanvasDragging(canvasGestures.isCanvasDragging);
+    const now = Date.now();
+    const dragging = canvasGestures.isCanvasDragging;
+
+    setIsCanvasDragging(dragging);
+
+    if (dragging) {
+      // While dragging, keep suppression window active.
+      suppressAddNoteUntilRef.current = now + 1000;
+    } else if (wasCanvasDraggingRef.current) {
+      // After drag end, ignore a short period to prevent accidental note spam.
+      suppressAddNoteUntilRef.current = now + 300;
+    }
+
+    wasCanvasDraggingRef.current = dragging;
   }, [canvasGestures.isCanvasDragging]);
   
   // Prevent canvas drag when notes are interacted with
@@ -222,6 +238,11 @@ export const InfiniteCanvas = React.memo(() => {
     setIsCanvasDragging: canvasGestures.setIsCanvasDragging,
   });
 
+  const handleStageDoubleClickGuarded = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (Date.now() < suppressAddNoteUntilRef.current) return;
+    handleStageDoubleClick(e);
+  };
+
   const stagePixelRatio = isAnyNoteDragging || isAnyNoteResizing || isCanvasDragging ? 1 : pixelRatio;
   const stagePerfectDrawEnabled =
     performanceMode === 'high' &&
@@ -244,14 +265,13 @@ export const InfiniteCanvas = React.memo(() => {
           width={dimensions.width}
           height={dimensions.height}
           onClick={handleStageClick}
-          onDblClick={handleStageDoubleClick}
+          onDblClick={handleStageDoubleClickGuarded}
           x={viewport.x}
           y={viewport.y}
           scaleX={viewport.scale}
           scaleY={viewport.scale}
-          // Restore original click/drag behavior: keep hit-testing on for desktop, and
-          // only disable it during panning on low-performance devices.
-          listening={!isCanvasDragging || performanceMode !== 'low'}
+          // Disable hit-testing during panning to prevent accidental interactions (esp. Windows dblclick during drag).
+          listening={!isCanvasDragging}
           perfectDrawEnabled={stagePerfectDrawEnabled}
           pixelRatio={stagePixelRatio}
         >

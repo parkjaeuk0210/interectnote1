@@ -11,7 +11,7 @@ export interface DeviceSyncCodeRecord {
 }
 
 const DEVICE_SYNC_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
-const DEVICE_SYNC_CODE_LENGTH = 8;
+const DEVICE_SYNC_CODE_LENGTH = 6;
 const DEFAULT_EXPIRES_IN_MS = 10 * 60 * 1000; // 10 minutes
 
 const getDeviceSyncCodePath = (code: string) => `device_sync_codes/${code}`;
@@ -25,8 +25,8 @@ export function normalizeDeviceSyncCode(input: string): string {
 
 export function formatDeviceSyncCode(code: string): string {
   const normalized = normalizeDeviceSyncCode(code);
-  if (normalized.length <= 4) return normalized;
-  return `${normalized.slice(0, 4)}-${normalized.slice(4, 8)}`;
+  if (normalized.length <= 3) return normalized;
+  return `${normalized.slice(0, 3)}-${normalized.slice(3, 6)}`;
 }
 
 function generateDeviceSyncCode(): string {
