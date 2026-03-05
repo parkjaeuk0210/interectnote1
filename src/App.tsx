@@ -4,7 +4,8 @@ import { Toolbar } from './components/UI/Toolbar';
 import { FloatingButton } from './components/UI/FloatingButton';
 import { HelpTooltip } from './components/UI/HelpTooltip';
 import { ToastContainer } from './components/UI/ToastContainer';
-import { DarkModeToggle } from './components/UI/DarkModeToggle';
+import { SettingsPanel } from './components/UI/SettingsPanel';
+import { useDarkMode } from './hooks/useDarkMode';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CanvasErrorBoundary } from './components/CanvasErrorBoundary';
 import { LoginModal } from './components/Auth/LoginModal';
@@ -29,6 +30,9 @@ function App() {
   const { canvasInfo } = useSharedCanvasStore();
   const { loading } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // 다크 모드 초기화 (시스템 설정 감지 및 localStorage 동기화)
+  useDarkMode();
   const [showCanvasList, setShowCanvasList] = useState(false);
   const [showCollaborators, setShowCollaborators] = useState(true); // Show by default in shared mode
   const undo = useAppStore((state) => state.undo);
@@ -336,7 +340,7 @@ function App() {
                 Sign In
               </button>
             )}
-            <DarkModeToggle />
+            <SettingsPanel />
           </div>
         </div>
         

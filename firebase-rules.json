@@ -60,6 +60,13 @@
         ".write": "(auth != null) && ((!data.exists() && newData.child('createdBy').val() === auth.uid && root.child('shared_canvases').child(newData.child('canvasId').val()).child('owner').val() === auth.uid) || (data.exists() && data.child('createdBy').val() === auth.uid))",
         ".validate": "newData.hasChildren(['canvasId','createdBy','createdAt','role']) && (newData.child('role').val() === 'viewer' || newData.child('role').val() === 'editor')"
       }
+    },
+    "device_sync_codes": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('createdBy').val() === auth.uid)",
+        ".validate": "newData.hasChildren(['code','token','canvasId','createdBy','createdAt','expiresAt']) && newData.child('code').val() === $code && newData.child('createdBy').val() === auth.uid && newData.child('expiresAt').isNumber() && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 3600000"
+      }
     }
   }
 }

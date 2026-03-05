@@ -70,14 +70,14 @@ describe('storageUtils', () => {
   });
 
   describe('isLocalStorageNearLimit', () => {
-    it('should return false when usage is below threshold', () => {
+    it('should return false when usage is at or below 85%', () => {
       jest.spyOn(storageUtils, 'getLocalStorageUsagePercent').mockReturnValue(50);
       
       const nearLimit = storageUtils.isLocalStorageNearLimit();
       expect(nearLimit).toBe(false);
     });
 
-    it('should return true when usage is above threshold', () => {
+    it('should return true when usage is above 85%', () => {
       jest.spyOn(storageUtils, 'getLocalStorageUsagePercent').mockReturnValue(86);
       
       const nearLimit = storageUtils.isLocalStorageNearLimit();

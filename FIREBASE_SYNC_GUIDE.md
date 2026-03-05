@@ -120,3 +120,27 @@ const isFirebaseMode = !loading && !!user && !user.isAnonymous;
 - [ ] 충돌 해결 로직
 - [ ] Firebase Storage로 이미지/파일 마이그레이션
 - [ ] 기존 로컬 데이터 → Firebase 마이그레이션 기능
+
+---
+
+## 🔑 기기 동기화 코드 (2026-03-05 추가)
+
+Google 로그인이 불편한 사용자를 위해 **게스트(Anonymous) 로그인 + 코드 입력** 방식으로 같은 캔버스를 연결할 수 있습니다.
+
+### 필요 조건
+- Firebase Authentication에서 **Anonymous** 제공자 활성화
+- Realtime Database 규칙에 `device_sync_codes` 추가
+
+예시 규칙:
+```json
+{
+  "rules": {
+    "device_sync_codes": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('createdBy').val() === auth.uid)"
+      }
+    }
+  }
+}
+```

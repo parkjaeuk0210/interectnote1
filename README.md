@@ -12,7 +12,7 @@ https://interectnote1.vercel.app
 - 📱 **모바일 최적화**: 터치 제스처 완벽 지원
 - 💾 **자동 저장**: 로컬 스토리지에 자동 저장
 - 🎯 **직관적인 인터페이스**: 더블 클릭으로 메모 추가
-- 🔄 **실시간 동기화**: Google 로그인으로 여러 기기 간 동기화
+- 🔄 **실시간 동기화**: Google 로그인 또는 동기화 코드로 여러 기기 간 동기화
 - 🌐 **다국어 지원**: 한국어/영어 지원
 - 🌙 **다크 모드**: 라이트/다크 테마 전환
 - 🖼️ **미디어 지원**: 이미지 및 파일 드래그 앤 드롭
@@ -64,7 +64,7 @@ npm run build
 
 동기화 기능을 사용하려면:
 1. Firebase 프로젝트 생성
-2. Google Authentication 활성화
+2. Authentication 활성화 (Google + Anonymous 권장)
 3. Realtime Database 생성
 4. `.env` 파일에 Firebase 설정 추가
 
