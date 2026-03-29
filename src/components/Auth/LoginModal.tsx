@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { signInWithGoogle, signInAsGuest } from '../../utils/auth';
+import { signInWithGoogle, signInAsGuest, getAuthErrorMessage } from '../../utils/auth';
 import { useTranslation } from '../../contexts/I18nContext';
 
 interface LoginModalProps {
@@ -33,7 +33,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     setError(null);
     const { error } = await signInWithGoogle();
     if (error) {
-      setError(t('loginError'));
+      setError(getAuthErrorMessage(error));
     } else {
       onClose();
     }
@@ -45,7 +45,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     setError(null);
     const { error } = await signInAsGuest();
     if (error) {
-      setError(t('loginError'));
+      setError(getAuthErrorMessage(error));
     } else {
       onClose();
     }

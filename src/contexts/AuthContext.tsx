@@ -1,7 +1,8 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect } from 'react';
 import { User } from 'firebase/auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, signInAnonymouslyHelper, isAnonymousUser } from '../lib/firebase';
+import { checkRedirectResult } from '../utils/auth';
 
 interface AuthContextType {
   user: User | null | undefined;
@@ -24,6 +25,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const user = authStateResult ? authStateResult[0] : null;
   const loading = authStateResult ? authStateResult[1] : false;
   const error = authStateResult ? authStateResult[2] : undefined;
+
+  useEffect(() => {
+    if (!auth) return;
+
+    checkRedirectResult().then(({ error }) => {
+      if (error) {
+        console.error('Redirect sign-in failed:', error);
+      }
+    });
+  }, []);
 
   const signInAnonymously = async (): Promise<User | null> => {
     if (!auth) {

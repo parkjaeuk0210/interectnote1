@@ -1,5 +1,49 @@
 import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, signInAnonymously } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
+import { isMobile, isStandalonePwa } from './device';
+
+const GOOGLE_REDIRECT_FALLBACK_ERRORS = new Set([
+  'auth/popup-blocked',
+  'auth/cancelled-popup-request',
+  'auth/operation-not-supported-in-this-environment',
+]);
+
+const shouldPreferRedirectForGoogleSignIn = () => {
+  if (typeof window === 'undefined') return false;
+  return isStandalonePwa() || isMobile();
+};
+
+export const getAuthErrorMessage = (error: unknown) => {
+  const authError = error as { code?: string; message?: string } | null;
+
+  switch (authError?.code) {
+    case 'auth/popup-closed-by-user':
+      return '로그인 팝업이 닫혔습니다.';
+    case 'auth/popup-blocked':
+      return '브라우저가 로그인 팝업을 차단했습니다.';
+    case 'auth/cancelled-popup-request':
+      return '이미 다른 로그인 창이 열려 있습니다. 잠시 후 다시 시도해주세요.';
+    case 'auth/operation-not-supported-in-this-environment':
+      return '현재 환경에서는 팝업 로그인이 지원되지 않습니다.';
+    case 'auth/network-request-failed':
+      return '네트워크 오류로 로그인에 실패했습니다.';
+    case 'auth/too-many-requests':
+      return '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.';
+    case 'auth/unauthorized-domain':
+      return '현재 도메인이 Firebase Auth 허용 도메인에 없습니다.';
+    default:
+      return authError?.message || '로그인 중 오류가 발생했습니다.';
+  }
+};
+
+const startGoogleRedirectSignIn = async () => {
+  if (!auth || !googleProvider) {
+    return { user: null, error: new Error('Firebase not configured') };
+  }
+
+  await signInWithRedirect(auth, googleProvider);
+  return { user: null, error: null };
+};
 
 export const signInWithGoogle = async () => {
   console.log('🔐 Starting Google sign in...');
@@ -12,6 +56,11 @@ export const signInWithGoogle = async () => {
   }
   
   try {
+    if (shouldPreferRedirectForGoogleSignIn()) {
+      console.log('↪️ Using redirect-based Google sign in for mobile/PWA environment...');
+      return await startGoogleRedirectSignIn();
+    }
+
     console.log('🚀 Attempting signInWithPopup...');
     const result = await signInWithPopup(auth, googleProvider);
     console.log('✅ Google sign in successful:', result.user?.email);
@@ -21,13 +70,11 @@ export const signInWithGoogle = async () => {
     console.error('Error code:', error?.code);
     console.error('Error message:', error?.message);
     
-    // If popup fails due to being blocked or other issues, try redirect
-    if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/popup-closed-by-user') {
-      console.log('🔄 Popup blocked/closed, trying redirect method...');
+    // If popup is unavailable in this environment, retry with redirect.
+    if (GOOGLE_REDIRECT_FALLBACK_ERRORS.has(error?.code)) {
+      console.log('🔄 Popup sign in unavailable, trying redirect method...');
       try {
-        await signInWithRedirect(auth, googleProvider);
-        // Redirect will happen, so we return a pending state
-        return { user: null, error: null };
+        return await startGoogleRedirectSignIn();
       } catch (redirectError: any) {
         console.error('❌ Redirect also failed:', redirectError);
         return { user: null, error: redirectError };

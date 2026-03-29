@@ -17,6 +17,17 @@ export const isTouch = (): boolean => {
   return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 };
 
+export const isStandalonePwa = (): boolean => {
+  if (typeof window === 'undefined') return false;
+
+  const displayModeStandalone =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(display-mode: standalone)').matches;
+  const iosStandalone = 'standalone' in navigator && (navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+  return displayModeStandalone || iosStandalone;
+};
+
 // Detect if the user is on macOS
 export const isMacOS = (): boolean => {
   return navigator.platform.toUpperCase().indexOf('MAC') >= 0 || 
