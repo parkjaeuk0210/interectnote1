@@ -41,7 +41,7 @@ export const messages = {
     // Help
     gettingStarted: '시작하기',
     addNoteHelp: '더블 클릭 또는 + 버튼으로 메모 추가',
-    navigateHelp: '드래그로 캔버스 이동, 휠로 확대/축소',
+    navigateHelp: '드래그 또는 가운데 버튼 드래그로 캔버스 이동, 휠로 확대/축소',
     moveNoteHelp: '메모 헤더 드래그로 위치 이동',
     editNoteHelp: '더블 클릭으로 내용 편집',
     
@@ -135,7 +135,7 @@ export const messages = {
     // Help
     gettingStarted: 'Getting Started',
     addNoteHelp: 'Double-click or press + button to add a note',
-    navigateHelp: 'Drag to move canvas, wheel to zoom',
+    navigateHelp: 'Drag or middle-click drag to move canvas, wheel to zoom',
     moveNoteHelp: 'Drag note header to move position',
     editNoteHelp: 'Double-click to edit content',
     

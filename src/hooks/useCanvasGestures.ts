@@ -3,6 +3,11 @@ import { useGesture } from '@use-gesture/react';
 import Konva from 'konva';
 import { isMobile, isTrackpadEvent, getWheelGestureType } from '../utils/device';
 
+const MIDDLE_MOUSE_BUTTON_MASK = 4;
+
+const isMiddleMouseDrag = (buttons: number) =>
+  (buttons & MIDDLE_MOUSE_BUTTON_MASK) === MIDDLE_MOUSE_BUTTON_MASK;
+
 interface Viewport {
   x: number;
   y: number;
@@ -89,7 +94,7 @@ export const useCanvasGestures = ({
         }
       },
       
-      onDragStart: ({ event, touches }) => {
+      onDragStart: ({ event, touches, buttons }) => {
         if (isAnyNoteResizing || isAnyNoteDragging || isInDrawingMode) return;
         
         // Don't start drag if it's a multi-touch (pinch gesture)
@@ -97,6 +102,12 @@ export const useCanvasGestures = ({
         
         const target = event.target as HTMLElement;
         if (target.tagName === 'CANVAS') {
+          if (isMiddleMouseDrag(buttons)) {
+            event.preventDefault();
+            setIsCanvasDragging(true);
+            return;
+          }
+
           const stage = stageRef.current;
           if (stage) {
             const pos = stage.getPointerPosition();
@@ -110,10 +121,14 @@ export const useCanvasGestures = ({
         }
       },
       
-      onDrag: ({ delta: [dx, dy], pinching, event, touches }) => {
+      onDrag: ({ delta: [dx, dy], pinching, event, touches, buttons }) => {
         // Don't handle drag if pinching, multi-touch, or in drawing mode
         if (pinching || !isCanvasDragging || isAnyNoteResizing || isAnyNoteDragging || isInDrawingMode) return;
         if (touches && touches > 1) return;
+
+        if (isMiddleMouseDrag(buttons)) {
+          event.preventDefault();
+        }
         
         const target = event.target as HTMLElement;
         if (target.tagName !== 'CANVAS') {
@@ -190,6 +205,7 @@ export const useCanvasGestures = ({
         pointer: { 
           touch: true, 
           mouse: true,
+          buttons: [1, 4],
         },
       },
       pinch: { 

@@ -55,7 +55,7 @@ export const HelpTooltip = () => {
             <p className="text-sm text-gray-700">
               {isMobileDevice
                 ? '빈 공간 드래그로 캔버스 이동, 핀치 또는 오른쪽 100% 드래그로 확대/축소'
-                : '빈 공간 드래그로 캔버스 이동, 휠로 확대/축소'}
+                : '빈 공간 드래그 또는 가운데 버튼 드래그로 캔버스 이동, 휠로 확대/축소'}
             </p>
           </div>
           

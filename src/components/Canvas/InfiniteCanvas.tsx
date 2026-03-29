@@ -243,6 +243,18 @@ export const InfiniteCanvas = React.memo(() => {
     handleStageDoubleClick(e);
   };
 
+  const handleContainerMouseDownCapture = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button === 1) {
+      e.preventDefault();
+    }
+  };
+
+  const handleContainerAuxClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button === 1) {
+      e.preventDefault();
+    }
+  };
+
   const stagePixelRatio = isAnyNoteDragging || isAnyNoteResizing || isCanvasDragging ? 1 : pixelRatio;
   const stagePerfectDrawEnabled =
     performanceMode === 'high' &&
@@ -252,13 +264,19 @@ export const InfiniteCanvas = React.memo(() => {
     !isCanvasDragging;
 
   return (
-    <div ref={containerRef} className="w-full h-full" style={{ 
-      touchAction: 'none',
-      WebkitTouchCallout: 'none',
-      WebkitUserSelect: 'none',
-      userSelect: 'none',
-      cursor: isCanvasDragging ? 'grabbing' : 'grab',
-    }}>
+    <div
+      ref={containerRef}
+      className="w-full h-full"
+      onMouseDownCapture={handleContainerMouseDownCapture}
+      onAuxClick={handleContainerAuxClick}
+      style={{
+        touchAction: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+        cursor: isCanvasDragging ? 'grabbing' : 'grab',
+      }}
+    >
       {shouldRenderStage && (
         <Stage
           ref={stageRef}

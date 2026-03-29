@@ -10,6 +10,9 @@ import { registerSW } from 'virtual:pwa-register'
 
 let swRegistration: ServiceWorkerRegistration | undefined
 
+// Reserve middle-click for canvas panning instead of Konva node dragging.
+Konva.dragButtons = [0]
+
 if (typeof window !== 'undefined') {
   const isStandalone =
     typeof window.matchMedia === 'function' &&
